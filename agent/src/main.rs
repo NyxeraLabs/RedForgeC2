@@ -1,18 +1,16 @@
-use log::info;
-use std::time::Duration;
+mod bootstrap;
+mod config;
+mod protocol;
+mod state;
+mod transport;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
-    info!("RedForgeC2 agent starting");
-
-    // TODO: Implement bootstrap logic (config, transport, tasks)
-    // This stub will be replaced by the full agent runtime.
-
-    loop {
-        info!("agent heartbeat (placeholder)");
-        std::thread::sleep(Duration::from_secs(30));
+    log::info!("RedForgeC2 agent starting");
+    if let Err(e) = bootstrap::run().await {
+        log::error!("agent bootstrap failed: {}", e);
+        std::process::exit(1);
     }
-
-    // Note: In a real agent, we would gracefully shutdown on signals.
 }
