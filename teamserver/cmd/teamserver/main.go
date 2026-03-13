@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/db"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/server"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // version is set at build time via ldflags.
@@ -25,7 +27,14 @@ func main() {
 		logger.Fatalf("failed to load config: %v", err)
 	}
 
-	httpServer := server.New(cfg, logger)
+	ctx := context.Background()
+	pool, err := connectWithRetry(ctx, cfg.DatabaseURL, 30*time.Second)
+	if err != nil {
+		logger.Fatalf("failed to init database: %v", err)
+	}
+	defer pool.Close()
+
+	httpServer := server.New(cfg, logger, pool)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -47,4 +56,19 @@ func main() {
 	time.Sleep(500 * time.Millisecond)
 
 	logger.Println("stopped")
+}
+
+func connectWithRetry(ctx context.Context, databaseURL string, timeout time.Duration) (*pgxpool.Pool, error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		pool, err := db.Init(ctx, databaseURL)
+		if err == nil {
+			return pool, nil
+		}
+		if time.Now().After(deadline) {
+			return nil, err
+		}
+		// Wait a bit and retry (common case: postgres is still starting)
+		time.Sleep(1 * time.Second)
+	}
 }
