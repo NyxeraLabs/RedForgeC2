@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -29,7 +30,16 @@ func showResultsDialog(app *tview.Application, pages *tview.Pages, serverURL, to
 	}
 
 	view := tview.NewTextView().SetDynamicColors(true).SetText(text)
-	view.SetBorder(true).SetTitle(fmt.Sprintf("Results (%s)", agentID)).SetTitleAlign(tview.AlignLeft)
+	view.SetBorder(true).SetTitle(fmt.Sprintf("Results (%s) - [Esc] back", agentID)).SetTitleAlign(tview.AlignLeft)
+
+	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			pages.RemovePage("results")
+			app.SetFocus(pages)
+			return nil
+		}
+		return event
+	})
 
 	pages.AddPage("results", view, true, true)
 	app.SetFocus(view)
