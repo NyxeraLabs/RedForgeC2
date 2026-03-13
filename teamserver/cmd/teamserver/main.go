@@ -39,6 +39,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	if os.Getenv("REDFORGE_CLI_DASHBOARD") == "1" {
+		go runDashboard(ctx, pool)
+	}
+
 	go func() {
 		if err := httpServer.Listen(ctx); err != nil && err != context.Canceled {
 			logger.Fatalf("server error: %v", err)

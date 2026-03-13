@@ -259,8 +259,8 @@ Realtime: WebSockets
 - [x] navigation system
 
 ### QA
-- [x] UI navigation tests
-- [x] authentication flow tests
+- [ ] UI navigation tests
+- [ ] authentication flow tests
 
 ### Commits
 - [x] initialize react ui
@@ -279,29 +279,29 @@ Realtime: WebSockets
 - [x] agent status indicators
 
 ### QA
-- [x] real-time update tests
+- [ ] real-time update tests
 
 ### Commits
 - [x] implement agent table
 - [x] add agent details panel
-- [x] add real-time websocket updates
+- [ ] add real-time websocket updates
 
 ---
 
 ## Issue 13 — Interactive Console
 
 ### Dev
-- [x] agent console terminal
-- [x] command submission
-- [x] result streaming
+- [ ] agent console terminal
+- [ ] command submission
+- [ ] result streaming
 
 ### QA
-- [x] console reliability tests
+- [ ] console reliability tests
 
 ### Commits
-- [x] implement console UI
-- [x] add websocket command streaming
-- [x] add command history
+- [ ] implement console UI
+- [ ] add websocket command streaming
+- [ ] add command history
 
 ---
 
@@ -310,34 +310,34 @@ Realtime: WebSockets
 ## Issue 14 — Listener Manager
 
 ### Dev
-- [x] create listener UI
-- [x] delete listener
-- [x] configure listeners
+- [ ] create listener UI
+- [ ] delete listener
+- [ ] configure listeners
 
 ### QA
-- [x] listener creation tests
+- [ ] listener creation tests
 
 ### Commits
-- [x] implement listener API
-- [x] add listener UI
-- [x] add listener status monitoring
+- [ ] implement listener API
+- [ ] add listener UI
+- [ ] add listener status monitoring
 
 ---
 
 ## Issue 15 — Loot Manager
 
 ### Dev
-- [x] implement file storage
-- [x] implement screenshot storage
-- [x] implement credential storage
+- [ ] implement file storage
+- [ ] implement screenshot storage
+- [ ] implement credential storage
 
 ### QA
-- [x] large file tests
-- [x] storage reliability tests
+- [ ] large file tests
+- [ ] storage reliability tests
 
 ### Commits
-- [x] implement loot storage
-- [x] add loot search
+- [ ] implement loot storage
+- [ ] add loot search
 - [x] add loot tagging
 - [x] implement loot download
 
@@ -348,34 +348,34 @@ Realtime: WebSockets
 ## Issue 16 — Playbook Engine
 
 ### Dev
-- [x] yaml playbook format
-- [x] playbook execution engine
-- [x] task sequencing
+- [ ] yaml playbook format
+- [ ] playbook execution engine
+- [ ] task sequencing
 
 ### QA
-- [x] playbook execution tests
+- [ ] playbook execution tests
 
 ### Commits
-- [x] implement playbook parser
-- [x] implement playbook executor
-- [x] add playbook scheduling
+- [ ] implement playbook parser
+- [ ] implement playbook executor
+- [ ] add playbook scheduling
 
 ---
 
 ## Issue 17 — Detection Telemetry
 
 ### Dev
-- [x] technique tracking
-- [x] detection metadata
-- [x] telemetry dashboard
+- [ ] technique tracking
+- [ ] detection metadata
+- [ ] telemetry dashboard
 
 ### QA
-- [x] telemetry accuracy tests
+- [ ] telemetry accuracy tests
 
 ### Commits
-- [x] implement telemetry collector
-- [x] add telemetry database
-- [x] implement detection dashboard
+- [ ] implement telemetry collector
+- [ ] add telemetry database
+- [ ] implement detection dashboard
 
 ---
 
@@ -435,3 +435,56 @@ Realtime: WebSockets
 - [x] add documentation
 - [x] add diagrams
 - [x] prepare v1 release
+
+---
+
+# Milestone 12 — Agent Capabilities (Priority)
+
+## Issue 18 — File Operations
+
+### Dev
+- [ ] implement file upload (agent receives file bytes and writes to disk)
+- [ ] implement file download (agent reads file and returns base64 payload)
+- [ ] handle large file streaming / chunking
+
+### QA
+- [ ] file integrity tests
+- [ ] partial transfer recovery tests
+
+### Commits
+- [ ] add file operation task handlers
+- [ ] add UI support for upload/download tasks
+
+---
+
+## Issue 19 — Keylogging & Persistence
+
+### Dev
+- [ ] implement keylogger task (capture keystrokes)
+- [ ] persist keystrokes securely
+- [ ] query keystrokes from server
+
+### QA
+- [ ] keylogging accuracy tests
+- [ ] privacy / access control tests
+
+### Commits
+- [ ] add keylogger task handler
+- [ ] add keylogging viewer in UI
+
+---
+
+## Issue 20 — Pivoting & Lateral Movement
+
+### Dev
+- [ ] implement pivot proxy (agent acts as SOCKS/HTTP proxy)
+- [ ] implement port forwarding task
+- [ ] implement remote command execution via pivot
+
+### QA
+- [ ] pivot stability tests
+- [ ] port forwarding stress tests
+
+### Commits
+- [ ] add pivoting task handlers
+- [ ] add UI pivot configuration controls
