@@ -35,8 +35,8 @@ Realtime: WebSockets
 
 ### Commits
 - [ ] init repository
-- [ ] add monorepo structure
-- [ ] configure go module
+- [x] add monorepo structure
+- [x] configure go module
 - [ ] configure rust workspace
 - [ ] initialize react app
 - [ ] add docker dev environment
@@ -75,21 +75,21 @@ Realtime: WebSockets
 
 ### Dev
 - [x] Implement Go HTTP server
-- [ ] Implement configuration loader
-- [ ] Implement logging system
+- [x] Implement configuration loader
+- [x] Implement logging system
 - [x] Implement API routing
 
 ### QA
-- [ ] API unit tests
-- [ ] Config parsing tests
+- [x] API unit tests
+- [x] Config parsing tests
 
 ### Commits
-- [ ] implement teamserver bootstrap
-- [ ] add configuration loader
-- [ ] add structured logging
-- [ ] add http router
-- [ ] add health endpoint
-- [ ] add graceful shutdown
+- [x] implement teamserver bootstrap
+- [x] add configuration loader
+- [x] add structured logging
+- [x] add http router
+- [x] add health endpoint
+- [x] add graceful shutdown
 
 ---
 
@@ -133,11 +133,11 @@ Realtime: WebSockets
 - [x] agent-architecture.md
 
 ### Commits
-- [ ] create rust agent project
-- [ ] implement agent bootstrap
-- [ ] implement metadata collection
-- [ ] add environment discovery
-- [ ] add serialization library
+- [x] create rust agent project
+- [x] implement agent bootstrap
+- [x] implement metadata collection
+- [x] add environment discovery
+- [x] add serialization library
 - [ ] add config loader
 
 ---
@@ -154,11 +154,11 @@ Realtime: WebSockets
 - [ ] heartbeat tests
 
 ### Commits
-- [ ] implement registration request
-- [ ] add agent id generation
-- [ ] add heartbeat protocol
+- [x] implement registration request
+- [x] add agent id generation
+- [x] add heartbeat protocol
 - [ ] add reconnect logic
-- [ ] add agent registry in server
+- [x] add agent registry in server
 
 ---
 
@@ -176,10 +176,10 @@ Realtime: WebSockets
 - [ ] concurrency tests
 
 ### Commits
-- [ ] implement task queue
-- [ ] implement dispatcher
-- [ ] implement result processor
-- [ ] add task status tracking
+- [x] implement task queue
+- [x] implement dispatcher
+- [x] implement result processor
+- [x] add task status tracking
 - [ ] add task history storage
 
 ---
