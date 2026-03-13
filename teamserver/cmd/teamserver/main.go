@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/server"
 )
 
 // version is set at build time via ldflags.
@@ -17,31 +18,20 @@ var version = "dev"
 func main() {
 	logger := log.New(os.Stdout, "[teamserver] ", log.LstdFlags|log.Lmsgprefix)
 
-	port := os.Getenv("REDFORGE_PORT")
-	if port == "" {
-		port = "8080"
+	logger.Printf("starting teamserver (version=%s)", version)
+
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Fatalf("failed to load config: %v", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"ok","version":"%s"}`, version)))
-	})
+	httpServer := server.New(cfg, logger)
 
-	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ready"}`))
-	})
-
-	httpServer := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
-	}
-
-	logger.Printf("starting teamserver (version=%s) on %s", version, httpServer.Addr)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.Listen(ctx); err != nil && err != context.Canceled {
 			logger.Fatalf("server error: %v", err)
 		}
 	}()
@@ -52,12 +42,9 @@ func main() {
 	<-stop
 	logger.Println("shutdown signal received, shutting down...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := httpServer.Shutdown(ctx); err != nil {
-		logger.Fatalf("graceful shutdown failed: %v", err)
-	}
+	cancel()
+	// Give the server time to shut down cleanly.
+	time.Sleep(500 * time.Millisecond)
 
 	logger.Println("stopped")
 }
