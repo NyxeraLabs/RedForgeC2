@@ -11,25 +11,31 @@ import (
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/auth"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/registry"
+	"github.com/google/uuid"
 )
 
 // Server represents the teamserver HTTP API.
 type Server struct {
-	config *config.Config
-	mux    *http.ServeMux
-	logger *log.Logger
+	config   *config.Config
+	mux      *http.ServeMux
+	logger   *log.Logger
+	registry *registry.Registry
 }
 
 // New creates a new teamserver HTTP server.
 func New(cfg *config.Config, logger *log.Logger) *Server {
 	mux := http.NewServeMux()
-	server := &Server{config: cfg, mux: mux, logger: logger}
+	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New()}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
 	mux.HandleFunc("/api/register", server.handleRegister)
 	mux.HandleFunc("/api/heartbeat", server.handleHeartbeat)
+	mux.HandleFunc("/api/task/result", server.handleTaskResult)
 	mux.HandleFunc("/api/login", server.handleLogin)
 	mux.Handle("/api/operator/agents", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleAgentList))))
+	mux.Handle("/api/operator/task", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskCreate))))
+	mux.Handle("/api/operator/results", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskResults))))
 
 	return server
 }
@@ -71,10 +77,14 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Validate and store agent registration.
+	token, err := s.registry.Register(reg)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "token": token})
 }
 
 func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -83,10 +93,96 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Parse telemetry payload, assign tasks.
+	var hb api.HeartbeatRequest
+	if err := json.NewDecoder(r.Body).Decode(&hb); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if !s.registry.ValidateToken(hb.AgentID, hb.Token) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	s.registry.UpdateHeartbeat(hb.AgentID)
+
+	tasks := s.registry.GetTasks(hb.AgentID)
+	resp := api.HeartbeatResponse{
+		Status: "ok",
+		Tasks:  tasks,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		AgentID       string   `json:"agent_id"`
+		Command       string   `json:"command"`
+		Args          []string `json:"args"`
+		TimeoutSecond int      `json:"timeout_seconds"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	task := api.TaskMessage{
+		TaskID:        uuid.NewString(),
+		Command:       req.Command,
+		Args:          req.Args,
+		Timeout:       req.TimeoutSecond,
+	}
+	s.registry.AddTask(req.AgentID, task)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"task_id": task.TaskID})
+}
+
+func (s *Server) handleTaskResult(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var result api.TaskResult
+	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if !s.registry.ValidateToken(result.AgentID, result.Token) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	s.registry.AddResult(result.AgentID, result)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleTaskResults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	agentID := r.URL.Query().Get("agent_id")
+	if agentID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	results := s.registry.GetResults(agentID)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(results)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +217,5 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAgentList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	// TODO: Return list of registered agents.
-	_ = json.NewEncoder(w).Encode([]interface{}{})
+	_ = json.NewEncoder(w).Encode(s.registry.ListAgents())
 }
