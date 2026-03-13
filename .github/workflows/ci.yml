@@ -24,8 +24,8 @@ jobs:
           test -d docs
           test -d configs
           test -d assets
-          test -d agent
-          test -d teamserver
+          test -d agents
+          test -d server
           test -d ui
           test -d scripts
           test -d tests
@@ -33,3 +33,68 @@ jobs:
           test -f README.md
           test -f SECURITY.md
           test -f .gitignore
+
+  go:
+    name: Go (teamserver)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go_backend/go.mod
+          cache-dependency-path: server/go_backend/go.sum
+      - name: Test
+        working-directory: server/go_backend
+        run: |
+          go test ./...
+          go vet ./...
+          test -z "$(gofmt -l .)"
+
+  rust:
+    name: Rust (agent)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Test + lint
+        working-directory: agents/rust_agent
+        run: |
+          cargo fmt --check
+          cargo clippy -- -D warnings
+          cargo test
+
+  web:
+    name: Web UI (build + lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/web/package.json
+      - name: Install
+        working-directory: ui/web
+        run: npm install
+      - name: Lint
+        working-directory: ui/web
+        run: npm run lint
+      - name: Build
+        working-directory: ui/web
+        run: npm run build
+
+  e2e:
+    name: E2E (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go_backend/go.mod
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run smoke test
+        run: |
+          chmod +x tests/e2e/agent_server_smoke.sh
+          tests/e2e/agent_server_smoke.sh
