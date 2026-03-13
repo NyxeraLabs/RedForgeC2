@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: redforge
+      POSTGRES_PASSWORD: redforge
+      POSTGRES_DB: redforge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  teamserver:
+    build:
+      context: ../teamserver
+      dockerfile: ../docker/teamserver/Dockerfile
+    environment:
+      REDFORGE_PORT: "8080"
+      DATABASE_URL: "postgres://redforge:redforge@postgres:5432/redforge?sslmode=disable"
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+  ui:
+    build:
+      context: ../ui
+      dockerfile: ../docker/ui/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_TEAMSERVER_URL: "http://localhost:8080"
+
+volumes:
+  postgres_data:
