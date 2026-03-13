@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   repo-checks:
-    name: Repo checks
+    name: Repo structure checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,56 @@ jobs:
           test -f README.md
           test -f SECURITY.md
           test -f .gitignore
+
+  go-build:
+    name: Go build & tests
+    runs-on: ubuntu-latest
+    needs: repo-checks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22
+      - name: Run gofmt
+        run: |
+          gofmt -w ./teamserver
+      - name: Build teamserver
+        run: |
+          cd teamserver && go test ./...
+
+  rust-build:
+    name: Rust build & tests
+    runs-on: ubuntu-latest
+    needs: repo-checks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Run cargo fmt
+        run: |
+          cargo fmt --all
+      - name: Run cargo tests
+        run: |
+          cargo test --workspace --all --quiet
+
+  ui-build:
+    name: UI build
+    runs-on: ubuntu-latest
+    needs: repo-checks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          cd ui && npm ci
+      - name: Build UI
+        run: |
+          cd ui && npm run build
