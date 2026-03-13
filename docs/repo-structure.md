@@ -14,7 +14,6 @@ RedForgeC2/
 │  ├─ rust_agent/
 │  └─ mock_agents/
 ├─ server/              # Teamserver backends (Python/Go)
-│  ├─ python_backend/
 │  └─ go_backend/
 ├─ ui/                  # Operator consoles
 │  ├─ tui/
@@ -37,7 +36,7 @@ RedForgeC2/
 ### Recommended Subfolders
 
 - **agents/** → simulation-only agents; mock telemetry + mock tasking  
-- **server/** → local-only backends that model task queue + telemetry ingest  
+- **server/** → local-only backend that models task queue + telemetry ingest  
 - **ui/** → operator consoles for training (TUI/Web)  
 - **scripts/** → Build, deploy, lab simulation scripts  
 - **tests/** → Unit, integration, and E2E tests (simulation)  

@@ -18,8 +18,8 @@ Realtime: WebSockets
 
 ### Dev
 - [ ] Create GitHub repository
-- [ ] Configure monorepo structure
-- [ ] Setup Go modules
+- [x] Configure monorepo structure
+- [x] Setup Go modules
 - [ ] Setup Rust workspace
 - [ ] Initialize React UI
 
@@ -29,9 +29,9 @@ Realtime: WebSockets
 - [ ] Configure automated testing
 
 ### Docs
-- [ ] Create README
+- [x] Create README
 - [ ] Create CONTRIBUTING
-- [ ] Create LICENSE
+- [x] Create LICENSE
 
 ### Commits
 - [ ] init repository
@@ -49,7 +49,7 @@ Realtime: WebSockets
 
 ### Dev
 - [ ] Define system architecture
-- [ ] Define agent protocol
+- [x] Define agent protocol
 - [ ] Define API design
 - [ ] Define transport abstraction
 
@@ -74,10 +74,10 @@ Realtime: WebSockets
 ## Issue 3 — Teamserver Skeleton
 
 ### Dev
-- [ ] Implement Go HTTP server
+- [x] Implement Go HTTP server
 - [ ] Implement configuration loader
 - [ ] Implement logging system
-- [ ] Implement API routing
+- [x] Implement API routing
 
 ### QA
 - [ ] API unit tests
@@ -121,16 +121,16 @@ Realtime: WebSockets
 ## Issue 5 — Agent Bootstrap
 
 ### Dev
-- [ ] Implement Rust agent startup
-- [ ] Implement environment discovery
-- [ ] Implement metadata collection
+- [x] Implement Rust agent startup
+- [x] Implement environment discovery
+- [x] Implement metadata collection
 
 ### QA
 - [ ] OS compatibility tests
 - [ ] metadata validation tests
 
 ### Docs
-- [ ] agent-architecture.md
+- [x] agent-architecture.md
 
 ### Commits
 - [ ] create rust agent project
@@ -145,12 +145,12 @@ Realtime: WebSockets
 ## Issue 6 — Agent Registration
 
 ### Dev
-- [ ] Implement registration protocol
-- [ ] Implement agent ID generation
-- [ ] Implement heartbeat mechanism
+- [x] Implement registration protocol
+- [x] Implement agent ID generation
+- [x] Implement heartbeat mechanism
 
 ### QA
-- [ ] registration integration test
+- [x] registration integration test
 - [ ] heartbeat tests
 
 ### Commits
@@ -167,9 +167,9 @@ Realtime: WebSockets
 ## Issue 7 — Tasking System
 
 ### Dev
-- [ ] Implement task queue
-- [ ] Implement task dispatcher
-- [ ] Implement result handler
+- [x] Implement task queue
+- [x] Implement task dispatcher
+- [x] Implement result handler
 
 ### QA
 - [ ] queue reliability tests

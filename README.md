@@ -23,7 +23,7 @@ For **education and authorized lab simulation only**. Do not target real systems
 
 | Component        | Technology / Language             |
 |-----------------|----------------------------------|
-| Teamserver       | Go and/or Python (local-only API + task queue simulation) |
+| Teamserver       | Go (local-only API + task queue simulation) |
 | Agent            | Rust (local-only protocol simulation) |
 | Operator Console | TUI + Web UI (React/TypeScript) |
 | Storage          | SQLite (optional; simulation logs only) |
@@ -38,7 +38,7 @@ For **education and authorized lab simulation only**. Do not target real systems
 
 RedForgeC2/
 ├─ agents/         # Simulation agents (Rust + mocks)
-├─ server/         # Teamserver backends (Python/Go)
+├─ server/         # Teamserver backend (Go)
 ├─ ui/             # Operator UIs (TUI + Web)
 ├─ docs/           # Documentation & UI mockups
 ├─ scripts/        # Build, deploy, lab scripts

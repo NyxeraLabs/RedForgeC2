@@ -101,7 +101,7 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
 - Configurable dashboards and MITRE ATT&CK integration
 
 **Tech Stack:**  
-- Backend: Python (FastAPI/Quart) or Go (Gin/Echo)  
+- Backend: Go (standard library / Gin / Echo)  
 - Frontend: React + TailwindCSS + D3.js/Recharts  
 - Real-time: Websockets (async updates)  
 - Auth: JWT, optional 2FA  

@@ -10,3 +10,16 @@ Planned behavior (lab-safe):
 Non-goals:
 - No real remote shell, file operations, persistence, or evasion.
 
+## Run
+
+```bash
+cd agents/rust_agent
+cargo test
+
+# Terminal 1: run the Go teamserver
+# (from repo root)
+#   cd server/go_backend && go run ./cmd/teamserver -addr 127.0.0.1:8080
+
+# Terminal 2: run the agent (one loop)
+REDFORGE_SERVER_URL=http://127.0.0.1:8080 REDFORGE_ONCE=1 cargo run
+```

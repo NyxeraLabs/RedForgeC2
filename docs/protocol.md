@@ -22,6 +22,17 @@ Non-goals:
 | Agent → Server | TELEMETRY | {metrics, heartbeat}           | Mock status update |
 | Server → Agent | CONFIG | {settings}                        | Update simulation settings |
 
+## HTTP API (Reference)
+
+The Go teamserver exposes a minimal local-only API:
+
+- `GET /healthz`
+- `POST /api/v1/agents/register`
+- `POST /api/v1/agents/{agent_id}/telemetry`
+- `GET /api/v1/agents/{agent_id}/tasks`
+- `POST /api/v1/agents/{agent_id}/tasks/{task_id}/result`
+- `POST /api/v1/tasks/enqueue`
+
 ## Heartbeat & Tasking Flow
 
 ```
