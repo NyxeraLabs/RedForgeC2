@@ -9,6 +9,7 @@ Recommended entry points:
 - `threat-model.md`
 - `protocol.md`
 - `protocol-spec.md`
+- `auth.md`
 - `agent-architecture.md`
 - `ui-mockups.md` (canonical)
 

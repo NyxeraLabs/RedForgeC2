@@ -7,7 +7,7 @@ RedForgeC2 is a **lab-safe simulation project**. Contributions must not add real
 - No remote command execution or arbitrary file transfer features.
 - No persistence, evasion, lateral movement, or exploitation modules.
 - Default networking must bind to `127.0.0.1` / `localhost` unless explicitly documented for isolated Docker/VM labs.
-- Keep changes small and well-tested; update docs and roadmap checkboxes.
+- Keep changes small and well-tested; update docs and `docs/roadmap.md` checkboxes.
 
 ## Development workflow (manual Gitflow)
 

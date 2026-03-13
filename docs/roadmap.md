@@ -96,23 +96,23 @@ Realtime: WebSockets
 ## Issue 4 — Authentication System
 
 ### Dev
-- [ ] Implement operator login
-- [ ] Implement JWT authentication
-- [ ] Implement RBAC
+- [x] Implement operator login
+- [x] Implement JWT authentication
+- [x] Implement RBAC
 
 ### QA
-- [ ] Auth bypass tests
-- [ ] Token validation tests
+- [x] Auth bypass tests
+- [x] Token validation tests
 
 ### Docs
-- [ ] auth.md
+- [x] auth.md
 
 ### Commits
-- [ ] implement login endpoint
-- [ ] add jwt authentication
-- [ ] implement role system
-- [ ] add middleware auth validation
-- [ ] add auth tests
+- [x] implement login endpoint
+- [x] add jwt authentication
+- [x] implement role system
+- [x] add middleware auth validation
+- [x] add auth tests
 
 ---
 
