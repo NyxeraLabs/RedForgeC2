@@ -8,6 +8,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use sysinfo::{ProcessesToUpdate, System};
@@ -183,9 +184,27 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                 Ok(entries) => {
                     let mut lines = Vec::new();
                     for entry in entries.flatten() {
-                        if let Ok(metadata) = entry.metadata() {
-                            let kind = if metadata.is_dir() { "dir" } else { "file" };
-                            lines.push(format!("{}\t{}\n", kind, entry.file_name().to_string_lossy()));
+                        let name = match entry.file_name().into_string() {
+                            Ok(n) => n,
+                            Err(_) => continue,
+                        };
+                        // Skip hidden files and some common noise directories.
+                        if name.starts_with('.') {
+                            continue;
+                        }
+                        if name.starts_with("go-build") || name.starts_with("systemd-private-") {
+                            continue;
+                        }
+                        let kind = if entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+                            "dir"
+                        } else {
+                            "file"
+                        };
+                        lines.push(format!("{} {}
+", kind, name));
+                        if lines.len() >= 200 {
+                            lines.push("...truncated...\n".to_string());
+                            break;
                         }
                     }
                     build_result("success", lines.join(""), None)
@@ -212,23 +231,48 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
         },
         _ => {
             let deadline = Duration::from_secs(task.timeout_seconds);
-            let mut command = Command::new(&task.command);
-            command.args(&task.args);
 
-            match timeout(deadline, command.output()).await {
-                Ok(Ok(output)) => {
-                    let output_text = String::from_utf8_lossy(&output.stdout).to_string();
-                    let error_text = String::from_utf8_lossy(&output.stderr).to_string();
-                    let status_str = if output.status.success() { "success" } else { "error" };
-                    build_result(
-                        status_str,
-                        output_text,
-                        if error_text.is_empty() { None } else { Some(error_text) },
-                    )
+            // Try running the command directly. If the binary isn't found, try via shell.
+            let run_direct = async {
+                let mut command = Command::new(&task.command);
+                command.args(&task.args);
+                timeout(deadline, command.output()).await
+            };
+
+            let result = match run_direct.await {
+                Ok(Ok(output)) => Some((output, "".to_string())),
+                Ok(Err(e)) if e.kind() == ErrorKind::NotFound => None,
+                Ok(Err(e)) => {
+                    return build_result("error", "".to_string(), Some(e.to_string()));
                 }
-                Ok(Err(e)) => build_result("error", "".to_string(), Some(e.to_string())),
-                Err(_) => build_result("timeout", "".to_string(), Some("task timed out".to_string())),
-            }
+                Err(_) => {
+                    return build_result("timeout", "".to_string(), Some("task timed out".to_string()));
+                }
+            };
+
+            let output = if let Some((output, _)) = result {
+                output
+            } else {
+                // Fallback to shell execution for builtins or missing binary.
+                let mut shell = Command::new("sh");
+                shell.arg("-c");
+                let full = format!("{} {}", task.command, task.args.join(" "));
+                shell.arg(full);
+                match timeout(deadline, shell.output()).await {
+                    Ok(Ok(output)) => output,
+                    Ok(Err(e)) => return build_result("error", "".to_string(), Some(e.to_string())),
+                    Err(_) => return build_result("timeout", "".to_string(), Some("task timed out".to_string())),
+                }
+            };
+
+            let output_text = String::from_utf8_lossy(&output.stdout).to_string();
+            let error_text = String::from_utf8_lossy(&output.stderr).to_string();
+            let status_str = if output.status.success() { "success" } else { "error" };
+            build_result(
+                status_str,
+                output_text,
+                if error_text.is_empty() { None } else { Some(error_text) },
+            )
         }
     }
 }
