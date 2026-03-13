@@ -1,47 +1,50 @@
-# RedForgeC2 — Agent ↔ Teamserver Protocol
+# RedForgeC2 — Agent ↔ Teamserver Protocol (Simulation-Only)
 
 ## Overview
 
-Defines secure communication, tasking, and telemetry between Rust Agents and the Go Teamserver.
+Defines **lab-safe**, **local-only** communication for simulated agents and a simulated teamserver.
 
-- **Transport:** HTTPS / WebSocket primary, fallback to DNS/ICMP  
-- **Serialization:** JSON for commands, optional CBOR for telemetry  
-- **Encryption:** AES-256-CBC per message  
-- **Authentication:** Agent registration token (UUID-based)  
+Non-goals:
+- No remote code execution, shells, file transfer, persistence, or lateral movement.
+- No “fallback” transports (DNS/ICMP/etc.). Keep traffic on `localhost` or an isolated Docker/VM network.
+
+- **Transport:** HTTP and/or WebSocket on `127.0.0.1` / Docker network  
+- **Serialization:** JSON  
+- **Authentication (optional):** simple dev token for lab sessions (not for real-world use)
 
 ## Message Types
 
 | Direction | Type   | Payload                          | Description |
 |-----------|--------|---------------------------------|-------------|
 | Agent → Server | REG    | {agent_id, os, arch, meta}       | Initial registration |
-| Server → Agent | TASK   | {task_id, command, args}          | Commands to execute |
-| Agent → Server | RESULT | {task_id, output, status}         | Execution results |
-| Agent → Server | TELEMETRY | {metrics, heartbeat}           | Status update |
-| Server → Agent | CONFIG | {settings}                        | Update agent configuration |
+| Server → Agent | TASK   | {task_id, task_type, params}      | Mock tasks to simulate |
+| Agent → Server | RESULT | {task_id, outcome, status}        | Simulated results |
+| Agent → Server | TELEMETRY | {metrics, heartbeat}           | Mock status update |
+| Server → Agent | CONFIG | {settings}                        | Update simulation settings |
 
 ## Heartbeat & Tasking Flow
 
 ```
 
-Agent boot → REGISTER → heartbeat loop (NHPP-jittered interval)
+Agent boot → REGISTER → heartbeat loop (fixed/jittered interval for UI demo)
 ↓
 Server receives heartbeat
 ↓
 Server responds with TASKS (if any)
 ↓
-Agent executes task → sends RESULT
+Agent simulates task → sends RESULT
 
 ```
 
-### Security Measures
+### Example Mock Tasks
 
-- AES-256-CBC encrypted messages  
-- HMAC verification  
-- Replay protection (sequence numbers)  
-- Optional multi-layer transport fallback (HTTP → ICMP → DNS)  
+- `collect_telemetry`: return synthetic CPU/RAM/NET samples
+- `sleep`: simulate a delayed heartbeat
+- `set_tag`: update a label for the agent (e.g., `lab-group-a`)
+- `emit_alert`: generate a synthetic alert event for UI testing
+- `echo`: return a provided string as a simulated outcome
 
 ### Future Enhancements
 
-- P2P agent relay mesh  
-- Multi-stage command pipelines  
-- Transport polymorphism & dynamic port hopping
+- Web UI live updates via local WebSocket
+- More telemetry schemas for training scenarios (still simulated)

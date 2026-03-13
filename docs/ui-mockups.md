@@ -2,7 +2,9 @@
 
 This document provides a comprehensive blueprint for the **User Interfaces** of RedForgeC2, covering both **Terminal UI (TUI)** and **Web UI**, including mockups, layouts, interactions, and operator workflows.  
 
-The goal is to provide **high-fidelity, professional C2 interfaces** inspired by modern frameworks like **Havoc, Sliver, Mythic**, and **Cobalt Strike**, while improving usability, real-time telemetry, and modular control.
+⚠️ Simulation-only: all “commands”, “tasks”, “alerts”, and “telemetry” are **mocked** for training and UI testing. No host command execution, file transfer, persistence, lateral movement, or exfiltration.
+
+The goal is to provide **high-fidelity training interfaces** inspired by modern operator consoles, while keeping all behaviors **lab-safe**.
 
 ---
 
@@ -10,11 +12,11 @@ The goal is to provide **high-fidelity, professional C2 interfaces** inspired by
 
 ### 1.1 Overview
 
-The TUI is designed for **live Red Team operations**, enabling operators to:
+The TUI is designed for **local lab training**, enabling operators to:
 
 - Interact with multiple agents and sessions
 - Monitor telemetry in real time
-- Trigger payloads and simulate attacks
+- Trigger **mock tasks** and simulated scenarios
 - Perform automated reporting and logging
 
 **Tech Stack:** Python (`rich`, `textual`) or Rust (`tui-rs`, `crossterm`).
@@ -54,7 +56,7 @@ The TUI is designed for **live Red Team operations**, enabling operators to:
 
 3. **Alerts Panel**  
    - Color-coded alerts: RED (critical), YELLOW (warning), GREEN (info)  
-   - Event logs: persistence triggered, file exfil, lateral movement  
+   - Event logs: simulated alerts (e.g., “policy violation”, “anomaly detected”)  
 
 4. **Command Input**  
    - Auto-complete commands (tab support)  
@@ -69,11 +71,8 @@ The TUI is designed for **live Red Team operations**, enabling operators to:
 |---------|------------|
 | `list` | List all connected agents with metadata |
 | `use <ID>` | Focus session on specific agent |
-| `shell <command>` | Execute remote shell command |
-| `upload <local> <remote>` | Upload file to agent |
-| `download <remote> <local>` | Download file from agent |
-| `persist` | Trigger persistence module |
-| `exfil <pattern>` | Trigger file exfiltration by pattern |
+| `task <type> [json]` | Enqueue a mock task for the focused agent |
+| `telemetry` | Show recent telemetry for focused agent |
 | `alerts` | Show alert log history |
 | `tasks` | Show pending C2 tasks |
 | `kill <ID>` | Terminate agent safely |
@@ -97,7 +96,7 @@ The TUI is designed for **live Red Team operations**, enabling operators to:
 The Web UI provides a **rich visual dashboard** for operators, analysts, and purple team members:
 
 - Multi-agent map & telemetry
-- Network topology and lateral movement visualization
+- Network topology and scenario visualization (simulated)
 - Real-time alerts and forensic data
 - Configurable dashboards and MITRE ATT&CK integration
 
@@ -118,16 +117,16 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
 | Logged in as: Operator1                                    |
 +-------------------+----------------------+----------------+
 
-| Agents Map Panel                                               | Alerts Panel       | Network Panel |         |
+| Agents Map Panel                                               | Alerts Panel       | Scenario Panel|         |
 | -------------------------------------------------------------- | ------------------ | ------------- | ------- |
-| [Map of lab hosts]                                             | [RED] Exfil ALERTS | Node Graph    |         |
-| Node 001: ALPHA                                                | [YEL] Shell Alert  | Gamma->Bravo  |         |
-| Node 002: BRAVO                                                | [GRN] Persist      | Bravo->Alpha  |         |
+| [Map of lab hosts]                                             | [RED] Sim Alert    | Node Graph    |         |
+| Node 001: ALPHA                                                | [YEL] Task Alert   | Gamma->Bravo  |         |
+| Node 002: BRAVO                                                | [GRN] Policy Alert | Bravo->Alpha  |         |
 | Node 003: GAMMA                                                |                    |               |         |
 | +-------------------+---------------------+----------------+   |                    |               |         |
 | Command Console: >                                             |                    |               |         |
 | +------------------------------------------------------------+ |                    |               |         |
-| Tabs: Sessions                                                 | Telemetry          | File Manager  | Reports |
+| Tabs: Sessions                                                 | Telemetry          | Tasks         | Reports |
 | +------------------------------------------------------------+ |                    |               |         |
 
 ```
@@ -141,22 +140,22 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
    - Color-coded by status: RED (alert), GREEN (idle), BLUE (controlled)  
 
 2. **Network Topology Panel**  
-   - Graph view of lateral movement paths  
-   - Live edge updates when agent moves or exfiltrates  
+   - Graph view of **simulated** relationships and lab scenarios  
+   - Live edge updates when scenarios change (simulated)  
 
 3. **Alerts Panel**  
    - Live feed of critical events  
    - Filters for severity, agent, or MITRE ATT&CK tactic  
 
 4. **Command Console**  
-   - Web-based shell execution  
-   - Autocomplete commands  
-   - Multi-line scripts with syntax highlighting  
+   - Web-based tasking (simulation)  
+   - Autocomplete task types  
+   - Optional JSON param editor for training scenarios  
 
 5. **Tabs**  
    - **Sessions:** All agent sessions and metadata  
    - **Telemetry:** CPU, memory, OS, network, battery  
-   - **File Manager:** Upload/download files  
+   - **Tasks:** Create/review simulated tasks and outcomes  
    - **Reports:** Generate forensic/IR reports mapped to MITRE ATT&CK  
 
 ---
@@ -164,10 +163,10 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
 ### 2.4 Key Web UI Features
 
 - **Real-Time Dashboards:** Dynamic charts and sparkline graphs for telemetry  
-- **Interactive Network Graph:** D3.js visualization for lateral movement  
+- **Interactive Network Graph:** D3.js visualization for simulated scenarios  
 - **Alerts & Notifications:** Toast pop-ups and persistent feed  
 - **Agent Health Overview:** Uptime, last check-in, payload version  
-- **Reporting Module:** PDF or JSON export of sessions, telemetry, alerts, and exfil events  
+- **Reporting Module:** PDF or JSON export of sessions, telemetry, alerts, and simulated events  
 - **Role-Based Access Control:** Operator, Analyst, QA, Viewer  
 - **Dark/Light Mode:** For usability during long engagements  
 
@@ -205,4 +204,3 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
 ```
 
 ---
-

@@ -1,7 +1,7 @@
 ### 1️⃣ `docs/repo-structure.md`
 
 ```markdown
-# RedForgeC2 — GitHub Repository Structure
+# RedForgeC2 — Repository Structure (Simulation-Only)
 
 This document outlines the recommended folder and file structure for a professional C2 framework.
 
@@ -10,26 +10,25 @@ This document outlines the recommended folder and file structure for a professio
 ```
 
 RedForgeC2/
-├─ agent/               # Rust implant code
-│  ├─ src/
-│  ├─ Cargo.toml
-│  ├─ build.rs
-├─ teamserver/          # Go backend code
-│  ├─ cmd/
-│  ├─ internal/
-│  ├─ go.mod
-├─ ui/                  # React/TypeScript operator console
-│  ├─ src/
-│  ├─ public/
-│  ├─ package.json
-├─ docs/                # Documentation
+├─ agents/              # Simulation agents (Rust + mocks)
+│  ├─ rust_agent/
+│  └─ mock_agents/
+├─ server/              # Teamserver backends (Python/Go)
+│  ├─ python_backend/
+│  └─ go_backend/
+├─ ui/                  # Operator consoles
+│  ├─ tui/
+│  └─ web/
+├─ docs/                # Documentation & UI mockups
 ├─ scripts/             # Build, deploy, and test scripts
-├─ tests/               # E2E tests & QA scripts
+├─ tests/               # Unit, integration, and E2E tests
+├─ ci_cd/               # CI/CD notes (workflows in .github/)
 ├─ docker/              # Container definitions
-├─ .github/             # CI/CD and workflows
+├─ .github/             # CI/CD workflows
 │  ├─ workflows/
 ├─ .gitignore
 ├─ README.md
+├─ SECURITY.md
 ├─ LICENSE
 └─ Makefile
 
@@ -37,15 +36,15 @@ RedForgeC2/
 
 ### Recommended Subfolders
 
-- **agent/** → Rust source code, agent bootstrap, command execution, telemetry, transport  
-- **teamserver/** → Go backend: task queue, API, database, configs  
-- **ui/** → React/TS frontend: dashboard, agent list, tasking, telemetry  
+- **agents/** → simulation-only agents; mock telemetry + mock tasking  
+- **server/** → local-only backends that model task queue + telemetry ingest  
+- **ui/** → operator consoles for training (TUI/Web)  
 - **scripts/** → Build, deploy, lab simulation scripts  
-- **tests/** → Unit, integration, and E2E tests  
+- **tests/** → Unit, integration, and E2E tests (simulation)  
 - **docker/** → Multi-node lab Dockerfiles  
 
 ✅ Best Practices
 
-- Keep `agent` separate to prevent accidental source leaks  
+- Bind services to `127.0.0.1` by default  
 - CI/CD pipelines must include build, test, lint  
 - Docs must include architecture, protocol, lab setup, UI guide
