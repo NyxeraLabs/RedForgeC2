@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
@@ -43,6 +44,8 @@ func New(cfg *config.Config, logger *log.Logger) *Server {
 	mux.Handle("/api/operator/agents", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleAgentList))))
 	mux.Handle("/api/operator/task", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskCreate))))
 	mux.Handle("/api/operator/results", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskResults))))
+	mux.Handle("/api/operator/telemetry/latest", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTelemetryLatest))))
+	mux.Handle("/api/operator/alerts", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleAlerts))))
 
 	return server
 }
@@ -112,6 +115,10 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.registry.UpdateHeartbeat(hb.AgentID)
+	if err := s.registry.StoreTelemetry(hb.AgentID, hb.Telemetry); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	tasks, err := s.registry.GetTasks(hb.AgentID)
 	if err != nil {
@@ -238,4 +245,53 @@ func (s *Server) handleAgentList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(agents)
+}
+
+func (s *Server) handleTelemetryLatest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	agentID := r.URL.Query().Get("agent_id")
+	if agentID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	t, err := s.registry.GetLatestTelemetry(agentID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if t == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(t)
+}
+
+func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil {
+			limit = v
+		}
+	}
+
+	alerts, err := s.registry.ListTaskAlerts(limit)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(alerts)
 }

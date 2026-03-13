@@ -52,6 +52,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS telemetry_latest (
+    agent_id TEXT PRIMARY KEY REFERENCES agents(agent_id) ON DELETE CASCADE,
+    cpu DOUBLE PRECISION NOT NULL,
+    memory BIGINT NOT NULL,
+    uptime BIGINT NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
 `
 
 	_, err := pool.Exec(ctx, schema)

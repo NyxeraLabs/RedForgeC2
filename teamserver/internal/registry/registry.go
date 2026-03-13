@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
@@ -27,6 +28,16 @@ type Agent struct {
 // Registry manages agents/tasks via Postgres.
 type Registry struct {
 	pool *pgxpool.Pool
+}
+
+type TaskAlert struct {
+	AgentID   string    `json:"agent_id"`
+	TaskID    string    `json:"task_id"`
+	Severity  string    `json:"severity"`
+	Status    string    `json:"status"`
+	Command   string    `json:"command"`
+	Error     string    `json:"error,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // New creates a new registry backed by the given DB pool.
@@ -83,6 +94,48 @@ func (r *Registry) ValidateToken(agentID, token string) bool {
 func (r *Registry) UpdateHeartbeat(agentID string) {
 	ctx := context.Background()
 	_, _ = r.pool.Exec(ctx, `UPDATE agents SET last_seen = now() WHERE agent_id=$1`, agentID)
+}
+
+func (r *Registry) StoreTelemetry(agentID string, t api.TelemetryPayload) error {
+	ctx := context.Background()
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO telemetry_latest (agent_id, cpu, memory, uptime, timestamp, updated_at)
+		VALUES ($1, $2, $3, $4, $5, now())
+		ON CONFLICT (agent_id) DO UPDATE
+		SET cpu = EXCLUDED.cpu,
+		    memory = EXCLUDED.memory,
+		    uptime = EXCLUDED.uptime,
+		    timestamp = EXCLUDED.timestamp,
+		    updated_at = now()
+	`, agentID, t.CPU, int64(t.Memory), int64(t.Uptime), t.Timestamp)
+	return err
+}
+
+func (r *Registry) GetLatestTelemetry(agentID string) (*api.TelemetryPayload, error) {
+	ctx := context.Background()
+	var t api.TelemetryPayload
+	var memory int64
+	var uptime int64
+	err := r.pool.QueryRow(ctx, `
+		SELECT agent_id, cpu, memory, uptime, timestamp
+		FROM telemetry_latest
+		WHERE agent_id = $1
+	`, agentID).Scan(&t.AgentID, &t.CPU, &memory, &uptime, &t.Timestamp)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if memory < 0 {
+		memory = 0
+	}
+	if uptime < 0 {
+		uptime = 0
+	}
+	t.Memory = uint64(memory)
+	t.Uptime = uint64(uptime)
+	return &t, nil
 }
 
 // ListAgents returns a snapshot of registered agents.
@@ -197,6 +250,40 @@ func (r *Registry) GetResults(agentID string) ([]api.TaskResult, error) {
 			return nil, err
 		}
 		out = append(out, r)
+	}
+	return out, nil
+}
+
+func (r *Registry) ListTaskAlerts(limit int) ([]TaskAlert, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 50
+	}
+
+	ctx := context.Background()
+	rows, err := r.pool.Query(ctx, `
+		SELECT agent_id, task_id, status, command, COALESCE(error, ''), updated_at
+		FROM tasks
+		WHERE status IN ('error', 'timeout')
+		ORDER BY updated_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]TaskAlert, 0)
+	for rows.Next() {
+		var a TaskAlert
+		if err := rows.Scan(&a.AgentID, &a.TaskID, &a.Status, &a.Command, &a.Error, &a.Timestamp); err != nil {
+			return nil, err
+		}
+		if a.Status == "timeout" {
+			a.Severity = "YEL"
+		} else {
+			a.Severity = "RED"
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }
