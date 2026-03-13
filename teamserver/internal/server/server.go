@@ -13,6 +13,7 @@ import (
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/registry"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Server represents the teamserver HTTP API.
@@ -23,10 +24,23 @@ type Server struct {
 	registry *registry.Registry
 }
 
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // New creates a new teamserver HTTP server.
-func New(cfg *config.Config, logger *log.Logger) *Server {
+func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	mux := http.NewServeMux()
-	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New()}
+	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New(pool)}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
 	mux.HandleFunc("/api/register", server.handleRegister)
@@ -45,7 +59,7 @@ func (s *Server) Listen(ctx context.Context) error {
 	addr := fmt.Sprintf(":%s", s.config.Port)
 	httpServer := &http.Server{
 		Addr:    addr,
-		Handler: s.mux,
+		Handler: withCORS(s.mux),
 	}
 
 	s.logger.Printf("teamserver listening on %s", addr)
@@ -134,10 +148,10 @@ func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := api.TaskMessage{
-		TaskID:        uuid.NewString(),
-		Command:       req.Command,
-		Args:          req.Args,
-		Timeout:       req.TimeoutSecond,
+		TaskID:  uuid.NewString(),
+		Command: req.Command,
+		Args:    req.Args,
+		Timeout: req.TimeoutSecond,
 	}
 	s.registry.AddTask(req.AgentID, task)
 

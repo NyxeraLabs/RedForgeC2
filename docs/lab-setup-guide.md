@@ -12,14 +12,14 @@ This guide describes setting up a local lab environment for RedForgeC2.
 From the repository root:
 
 ```sh
-docker-compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 This starts:
 
 - `postgres`: database
-- `teamserver`: C2 server on port 8080
-- `ui`: operator UI on port 5173
+- `teamserver`: C2 server on port 9080
+- `ui`: operator UI on port 5174
 
 ## Custom Configuration
 
@@ -30,6 +30,6 @@ Environment variables can be set in `docker/docker-compose.yml` or via an `.env`
 To rebuild and reset state:
 
 ```sh
-docker-compose down -v
-docker-compose up --build
+docker compose -f docker/docker-compose.yml down -v
+docker compose -f docker/docker-compose.yml up --build
 ```

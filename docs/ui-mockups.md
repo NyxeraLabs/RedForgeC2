@@ -193,9 +193,9 @@ The Web UI provides a **rich visual dashboard** for operators, analysts, and pur
 
 ### 4️⃣ Next Steps for Dev
 
-- [ ] Implement TUI with `rich` or `tui-rs`  
-- [ ] Implement Web UI with React + WebSocket telemetry  
-- [ ] Connect TUI/Web UI to unified Agent ↔ Teamserver protocol  
+- [x] Implement TUI with `tui-rs`  
+- [x] Implement Web UI with React + API tasking  
+- [x] Connect TUI/Web UI to unified Agent ↔ Teamserver protocol  
 - [ ] Add real-time alert rendering and MITRE ATT&CK tagging  
 - [ ] Conduct UX testing with internal lab simulations  
 

