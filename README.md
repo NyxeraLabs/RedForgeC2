@@ -63,6 +63,12 @@ RedForgeC2/
 
 ## ⚙️ Quick Start
 
+### Quick launch (recommended)
+
+```bash
+make up
+```
+
 ### 1. Install Dependencies
 
 ```bash

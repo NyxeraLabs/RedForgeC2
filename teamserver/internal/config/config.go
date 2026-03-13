@@ -8,19 +8,19 @@ import (
 
 // Config holds teamserver runtime configuration.
 type Config struct {
-	Port              string
-	DatabaseURL       string
-	JWTSecret         string
-	AdminUsername     string
-	AdminPassword     string
-	TokenExpiryMins   int
+	Port            string
+	DatabaseURL     string
+	JWTSecret       string
+	AdminUsername   string
+	AdminPassword   string
+	TokenExpiryMins int
 }
 
 // Load reads configuration from environment variables.
 func Load() (*Config, error) {
 	port := os.Getenv("REDFORGE_PORT")
 	if port == "" {
-		port = "8080"
+		port = "9080"
 	}
 
 	db := os.Getenv("DATABASE_URL")
