@@ -15,6 +15,20 @@ type RegisterResponse struct {
 	ServerTime string `json:"server_time"`
 }
 
+type AgentSummary struct {
+	AgentID   string            `json:"agent_id"`
+	OS        string            `json:"os,omitempty"`
+	Arch      string            `json:"arch,omitempty"`
+	Hostname  string            `json:"hostname,omitempty"`
+	Meta      map[string]string `json:"meta,omitempty"`
+	CreatedAt string            `json:"created_at"`
+	LastSeen  string            `json:"last_seen"`
+}
+
+type ListAgentsResponse struct {
+	Agents []AgentSummary `json:"agents"`
+}
+
 type TelemetryEvent struct {
 	Timestamp string             `json:"timestamp"`
 	Metrics   map[string]float64 `json:"metrics,omitempty"`
@@ -68,4 +82,3 @@ type SubmitResultResponse struct {
 func NowRFC3339Nano() string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
-

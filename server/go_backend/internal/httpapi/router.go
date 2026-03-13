@@ -3,21 +3,33 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
+	"redforgec2/server/go_backend/internal/events"
 	"redforgec2/server/go_backend/internal/protocol"
 	"redforgec2/server/go_backend/internal/store"
 )
 
 type Router struct {
 	store *store.Store
+	log   *slog.Logger
+	ev    *events.Writer
 	mux   *http.ServeMux
 }
 
-func NewRouter(st *store.Store) http.Handler {
+type Deps struct {
+	Store  *store.Store
+	Logger *slog.Logger
+	Events *events.Writer
+}
+
+func NewRouter(deps Deps) http.Handler {
 	r := &Router{
-		store: st,
+		store: deps.Store,
+		log:   deps.Logger,
+		ev:    deps.Events,
 		mux:   http.NewServeMux(),
 	}
 
@@ -56,6 +68,12 @@ func (r *Router) handleV1(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) handleAgents(w http.ResponseWriter, req *http.Request, parts []string) {
+	// GET /api/v1/agents
+	if len(parts) == 0 && req.Method == http.MethodGet {
+		writeJSON(w, http.StatusOK, protocol.ListAgentsResponse{Agents: r.store.ListAgents()})
+		return
+	}
+
 	// POST /api/v1/agents/register
 	if len(parts) == 1 && parts[0] == "register" && req.Method == http.MethodPost {
 		var rr protocol.RegisterRequest
@@ -64,6 +82,7 @@ func (r *Router) handleAgents(w http.ResponseWriter, req *http.Request, parts []
 			return
 		}
 		agentID := r.store.Register(rr)
+		r.writeEvent("agent_registered", agentID, map[string]any{"os": rr.OS, "arch": rr.Arch, "hostname": rr.Hostname})
 		writeJSON(w, http.StatusOK, protocol.RegisterResponse{
 			AgentID:    agentID,
 			ServerTime: protocol.NowRFC3339Nano(),
@@ -93,6 +112,7 @@ func (r *Router) handleAgents(w http.ResponseWriter, req *http.Request, parts []
 			writeErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		r.writeEvent("telemetry_received", agentID, map[string]any{"events": len(tr.Events)})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true})
 		return
 	}
@@ -108,6 +128,7 @@ func (r *Router) handleAgents(w http.ResponseWriter, req *http.Request, parts []
 			writeErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		r.writeEvent("tasks_polled", agentID, map[string]any{"count": len(tasks)})
 		writeJSON(w, http.StatusOK, protocol.PollTasksResponse{Tasks: tasks})
 		return
 	}
@@ -132,6 +153,7 @@ func (r *Router) handleAgents(w http.ResponseWriter, req *http.Request, parts []
 			writeErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		r.writeEvent("result_submitted", agentID, map[string]any{"task_id": taskID})
 		writeJSON(w, http.StatusOK, protocol.SubmitResultResponse{Ok: true, ServerTime: protocol.NowRFC3339Nano()})
 		return
 	}
@@ -160,6 +182,7 @@ func (r *Router) handleTasks(w http.ResponseWriter, req *http.Request, parts []s
 			writeErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		r.writeEvent("task_enqueued", er.AgentID, map[string]any{"task_type": er.TaskType, "task_id": task.TaskID})
 		writeJSON(w, http.StatusOK, protocol.EnqueueTaskResponse{Task: task})
 		return
 	}
@@ -187,3 +210,13 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]any{"error": msg})
 }
 
+func (r *Router) writeEvent(typ, agentID string, data map[string]any) {
+	if r.ev == nil {
+		return
+	}
+	if err := r.ev.Write(events.Event{Type: typ, AgentID: agentID, Data: data}); err != nil {
+		if r.log != nil {
+			r.log.Warn("event_log_write_failed", "err", err)
+		}
+	}
+}

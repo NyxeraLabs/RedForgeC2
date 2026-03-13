@@ -13,7 +13,7 @@ import (
 
 func TestRegisterEnqueuePollSubmitTelemetry(t *testing.T) {
 	st := store.New()
-	srv := httptest.NewServer(NewRouter(st))
+	srv := httptest.NewServer(NewRouter(Deps{Store: st}))
 	t.Cleanup(srv.Close)
 
 	// Register
@@ -96,4 +96,3 @@ func TestRegisterEnqueuePollSubmitTelemetry(t *testing.T) {
 		t.Fatalf("telemetry status: %s", telRes.Status)
 	}
 }
-

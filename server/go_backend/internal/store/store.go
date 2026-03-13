@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"sync"
+	"time"
 
 	"redforgec2/server/go_backend/internal/protocol"
 )
@@ -21,6 +22,11 @@ type Store struct {
 
 type agentState struct {
 	id        string
+	os        string
+	arch      string
+	hostname  string
+	createdAt time.Time
+	lastSeen  time.Time
 	meta      map[string]string
 	telemetry []protocol.TelemetryEvent
 	tasks     []protocol.Task
@@ -38,12 +44,19 @@ func (s *Store) Register(req protocol.RegisterRequest) string {
 	if id == "" {
 		id = newID()
 	}
-	if _, ok := s.agents[id]; ok {
+	now := time.Now().UTC()
+	if a, ok := s.agents[id]; ok {
+		a.lastSeen = now
 		return id
 	}
 	s.agents[id] = &agentState{
-		id:   id,
-		meta: req.Meta,
+		id:        id,
+		os:        req.OS,
+		arch:      req.Arch,
+		hostname:  req.Hostname,
+		createdAt: now,
+		lastSeen:  now,
+		meta:      req.Meta,
 	}
 	return id
 }
@@ -56,6 +69,7 @@ func (s *Store) AddTelemetry(agentID string, events []protocol.TelemetryEvent) e
 	if !ok {
 		return ErrAgentNotFound
 	}
+	a.lastSeen = time.Now().UTC()
 	a.telemetry = append(a.telemetry, events...)
 	return nil
 }
@@ -68,6 +82,7 @@ func (s *Store) EnqueueTask(agentID, taskType string, params map[string]any) (pr
 	if !ok {
 		return protocol.Task{}, ErrAgentNotFound
 	}
+	a.lastSeen = time.Now().UTC()
 
 	task := protocol.Task{
 		TaskID:    newID(),
@@ -88,6 +103,7 @@ func (s *Store) PollTasks(agentID string) ([]protocol.Task, error) {
 	if !ok {
 		return nil, ErrAgentNotFound
 	}
+	a.lastSeen = time.Now().UTC()
 
 	var out []protocol.Task
 	for i := range a.tasks {
@@ -107,6 +123,7 @@ func (s *Store) SubmitResult(agentID, taskID string, result protocol.SubmitResul
 	if !ok {
 		return ErrAgentNotFound
 	}
+	a.lastSeen = time.Now().UTC()
 	for i := range a.tasks {
 		if a.tasks[i].TaskID == taskID {
 			a.tasks[i].Status = protocol.TaskCompleted
@@ -114,6 +131,25 @@ func (s *Store) SubmitResult(agentID, taskID string, result protocol.SubmitResul
 		}
 	}
 	return ErrTaskNotFound
+}
+
+func (s *Store) ListAgents() []protocol.AgentSummary {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make([]protocol.AgentSummary, 0, len(s.agents))
+	for _, a := range s.agents {
+		out = append(out, protocol.AgentSummary{
+			AgentID:   a.id,
+			OS:        a.os,
+			Arch:      a.arch,
+			Hostname:  a.hostname,
+			Meta:      a.meta,
+			CreatedAt: a.createdAt.Format(time.RFC3339Nano),
+			LastSeen:  a.lastSeen.Format(time.RFC3339Nano),
+		})
+	}
+	return out
 }
 
 func newID() string {
@@ -124,4 +160,3 @@ func newID() string {
 	}
 	return hex.EncodeToString(b[:])
 }
-
