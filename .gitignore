@@ -15,6 +15,10 @@ Thumbs.db
 *.p12
 secrets/
 
+# Python
+.venv/
+__pycache__/
+
 # Logs & databases
 *.log
 *.sqlite
@@ -45,4 +49,3 @@ pnpm-debug.log*
 coverage/
 playwright-report/
 test-results/
-

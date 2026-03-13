@@ -3,6 +3,7 @@
 DOCKER_COMPOSE := docker-compose -f docker/docker-compose.yml
 
 .PHONY: all up down build restart logs ps clean db-reset agent teamserver ui
+.PHONY: tui
 
 all: up
 
@@ -48,3 +49,7 @@ teamserver:
 # Run just the UI locally (not inside docker)
 ui:
 	cd ui && npm install && npm run dev
+
+# Run the operator TUI locally (Textual)
+tui:
+	cd tui && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python app.py
