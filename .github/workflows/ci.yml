@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, QA, main]
+  pull_request:
+    branches: [dev, QA, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-checks:
+    name: Repo checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required paths exist
+        run: |
+          test -d docs
+          test -d configs
+          test -d assets
+          test -d agent
+          test -d teamserver
+          test -d ui
+          test -d scripts
+          test -d tests
+          test -d docker
+          test -f README.md
+          test -f SECURITY.md
+          test -f .gitignore
