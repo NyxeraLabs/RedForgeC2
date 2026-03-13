@@ -21,7 +21,7 @@ services:
       DATABASE_URL: "postgres://redforge:redforge@postgres:5432/redforge?sslmode=disable"
       REDFORGE_JWT_SECRET: "super-secret-key"
       REDFORGE_ADMIN_USER: "admin"
-      REDFORGE_ADMIN_PASS: "redforge"
+      REDFORGE_ADMIN_PASS: "redforge-admin"
     depends_on:
       - postgres
     ports:

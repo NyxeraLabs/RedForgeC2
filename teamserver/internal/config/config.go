@@ -14,6 +14,8 @@ type Config struct {
 	AdminUsername   string
 	AdminPassword   string
 	TokenExpiryMins int
+	TLSCertFile     string
+	TLSKeyFile      string
 }
 
 // Load reads configuration from environment variables.
@@ -40,7 +42,7 @@ func Load() (*Config, error) {
 
 	adminPass := os.Getenv("REDFORGE_ADMIN_PASS")
 	if adminPass == "" {
-		adminPass = "redforge"
+		adminPass = "redforge-admin"
 	}
 
 	expires := 60
@@ -57,5 +59,7 @@ func Load() (*Config, error) {
 		AdminUsername:   adminUser,
 		AdminPassword:   adminPass,
 		TokenExpiryMins: expires,
+		TLSCertFile:     os.Getenv("REDFORGE_TLS_CERT_FILE"),
+		TLSKeyFile:      os.Getenv("REDFORGE_TLS_KEY_FILE"),
 	}, nil
 }

@@ -9,9 +9,11 @@ RedForgeC2 uses a simple JWT-based authentication scheme for operator access and
    - `username`
    - `password`
 
-2. Server validates credentials against environment variables:
-   - `REDFORGE_ADMIN_USER`
-   - `REDFORGE_ADMIN_PASS`
+2. Server validates credentials against the `users` table (Postgres).
+   - On startup, the teamserver ensures an admin user exists from:
+     - `REDFORGE_ADMIN_USER` (default: `admin`)
+     - `REDFORGE_ADMIN_PASS` (default: `redforge-admin`)
+   - Passwords are stored using bcrypt hashes (never plaintext).
 
 3. On success, the server returns a signed JWT:
    - `alg: HS256`
@@ -20,7 +22,16 @@ RedForgeC2 uses a simple JWT-based authentication scheme for operator access and
 
 ### Usage
 - All operator API endpoints under `/api/operator/*` require an `Authorization: Bearer <token>` header.
-- The server validates the token signature and checks the required role (`admin`).
+- The server validates the token signature and checks role permissions (Admin/Operator/Observer).
+
+## User Management
+
+- Admin-only endpoint: `GET/POST /api/admin/users`
+  - Create users with roles: `admin`, `operator`, `observer`
+- Self-service endpoints:
+  - `GET /api/me`
+  - `POST /api/me/profile`
+  - `POST /api/me/password`
 
 ## Agent Authentication (Token)
 
@@ -36,3 +47,4 @@ RedForgeC2 uses a simple JWT-based authentication scheme for operator access and
 
 - `REDFORGE_JWT_SECRET`: secret used for signing and validating tokens.
 - `REDFORGE_TOKEN_EXPIRY_MIN`: JWT expiration in minutes (default: 60).
+- `REDFORGE_ADMIN_RESET`: if set to `1`, updates the admin password on startup.
