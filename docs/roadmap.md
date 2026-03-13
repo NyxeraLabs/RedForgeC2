@@ -48,24 +48,24 @@ Realtime: WebSockets
 ## Issue 2 — Architecture Definition
 
 ### Dev
-- [ ] Define system architecture
+- [x] Define system architecture
 - [x] Define agent protocol
-- [ ] Define API design
-- [ ] Define transport abstraction
+- [x] Define API design
+- [x] Define transport abstraction
 
 ### QA
-- [ ] Define testing strategy
-- [ ] Define integration test plan
+- [x] Define testing strategy
+- [x] Define integration test plan
 
 ### Docs
-- [ ] architecture.md
-- [ ] threat-model.md
-- [ ] protocol-spec.md
+- [x] architecture.md
+- [x] threat-model.md
+- [x] protocol-spec.md
 
 ### Commits
-- [ ] add architecture documentation
-- [ ] add protocol specification
-- [ ] add threat model
+- [x] add architecture documentation
+- [x] add protocol specification
+- [x] add threat model
 
 ---
 
