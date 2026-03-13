@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"redforgec2/server/go_backend/internal/auth"
 	"redforgec2/server/go_backend/internal/config"
 	"redforgec2/server/go_backend/internal/events"
 	"redforgec2/server/go_backend/internal/httpapi"
@@ -38,8 +39,34 @@ func main() {
 	}
 	defer func() { _ = ev.Close() }()
 
+	var authSvc *auth.Service
+	if cfg.Auth.Enabled {
+		adminUser := os.Getenv("REDFORGE_ADMIN_USER")
+		adminPass := os.Getenv("REDFORGE_ADMIN_PASS")
+		if cfg.Auth.AllowDevAdminFromEnv && (adminUser == "" || adminPass == "") {
+			logger.Error("auth_enabled_missing_admin_env", "need", "REDFORGE_ADMIN_USER and REDFORGE_ADMIN_PASS")
+			os.Exit(2)
+		}
+		var users []auth.User
+		if cfg.Auth.AllowDevAdminFromEnv {
+			hash, err := auth.HashPassword(adminPass)
+			if err != nil {
+				logger.Error("auth_hash_failed", "err", err)
+				os.Exit(2)
+			}
+			users = append(users, auth.User{Username: adminUser, PasswordHash: hash, Role: auth.RoleAdmin})
+		}
+		svc, err := auth.New(true, cfg.Auth.JWTSecret, cfg.Auth.TokenTTL, users)
+		if err != nil {
+			logger.Error("auth_init_failed", "err", err)
+			os.Exit(2)
+		}
+		authSvc = svc
+		logger.Info("auth_enabled", "token_ttl", cfg.Auth.TokenTTL.String(), "dev_admin_from_env", cfg.Auth.AllowDevAdminFromEnv)
+	}
+
 	st := store.New()
-	router := httpapi.NewRouter(httpapi.Deps{Store: st, Logger: logger, Events: ev})
+	router := httpapi.NewRouter(httpapi.Deps{Store: st, Logger: logger, Events: ev, Auth: authSvc})
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,

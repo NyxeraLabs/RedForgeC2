@@ -18,7 +18,15 @@ type Config struct {
 	EventLog   string        `json:"event_log"`
 	TLSCert    string        `json:"tls_cert"`
 	TLSKey     string        `json:"tls_key"`
+	Auth       AuthConfig    `json:"auth"`
 	Timeouts   ServerTimeout `json:"timeouts"`
+}
+
+type AuthConfig struct {
+	Enabled            bool          `json:"enabled"`
+	JWTSecret          string        `json:"jwt_secret"`
+	TokenTTL           time.Duration `json:"token_ttl"`
+	AllowDevAdminFromEnv bool        `json:"allow_dev_admin_from_env"`
 }
 
 type ServerTimeout struct {
@@ -34,6 +42,12 @@ func Default() Config {
 		EventLog:   "data/events.jsonl",
 		TLSCert:    "",
 		TLSKey:     "",
+		Auth: AuthConfig{
+			Enabled:              false,
+			JWTSecret:            "",
+			TokenTTL:             8 * time.Hour,
+			AllowDevAdminFromEnv: true,
+		},
 		Timeouts: ServerTimeout{
 			ReadHeader: 5 * time.Second,
 		},
@@ -53,6 +67,8 @@ func Load(args []string) (Config, error) {
 	logJSON := fs.String("log-json", "", "true/false: emit JSON logs (default true)")
 	tlsCert := fs.String("tls-cert", "", "TLS cert path (enables HTTPS)")
 	tlsKey := fs.String("tls-key", "", "TLS key path (enables HTTPS)")
+	authEnabled := fs.String("auth-enabled", "", "true/false: enable operator auth")
+	jwtSecret := fs.String("jwt-secret", "", "JWT secret (required when auth is enabled)")
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
@@ -90,6 +106,16 @@ func Load(args []string) (Config, error) {
 	if *tlsKey != "" {
 		cfg.TLSKey = *tlsKey
 	}
+	if *authEnabled != "" {
+		v, err := strconv.ParseBool(*authEnabled)
+		if err != nil {
+			return Config{}, errors.New("invalid -auth-enabled value (use true/false)")
+		}
+		cfg.Auth.Enabled = v
+	}
+	if *jwtSecret != "" {
+		cfg.Auth.JWTSecret = *jwtSecret
+	}
 	if *logJSON != "" {
 		v, err := strconv.ParseBool(*logJSON)
 		if err != nil {
@@ -121,6 +147,18 @@ func merge(dst *Config, src Config) {
 	if src.TLSKey != "" {
 		dst.TLSKey = src.TLSKey
 	}
+	if src.Auth.JWTSecret != "" {
+		dst.Auth.JWTSecret = src.Auth.JWTSecret
+	}
+	if src.Auth.TokenTTL != 0 {
+		dst.Auth.TokenTTL = src.Auth.TokenTTL
+	}
+	if src.Auth.Enabled {
+		dst.Auth.Enabled = true
+	}
+	if src.Auth.AllowDevAdminFromEnv == false {
+		dst.Auth.AllowDevAdminFromEnv = false
+	}
 	// bool: allow explicit false from file only if the JSON includes it; we treat zero-value as "not set".
 	// So we only merge LogJSON when it differs from default of true AND file provided a value.
 	// If users want deterministic behavior, they should set it via env/flag.
@@ -150,6 +188,14 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("REDFORGE_TLS_KEY"); v != "" {
 		cfg.TLSKey = v
+	}
+	if v := os.Getenv("REDFORGE_AUTH_ENABLED"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.Auth.Enabled = b
+		}
+	}
+	if v := os.Getenv("REDFORGE_JWT_SECRET"); v != "" {
+		cfg.Auth.JWTSecret = v
 	}
 	if v := os.Getenv("REDFORGE_LOG_JSON"); v != "" {
 		if b, err := strconv.ParseBool(v); err == nil {
