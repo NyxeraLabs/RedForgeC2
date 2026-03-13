@@ -125,6 +125,82 @@ func (r *Registry) AddTask(agentID string, task api.TaskMessage) {
 	r.tasks[agentID] = append(r.tasks[agentID], &task)
 }
 
+type TaskSummary struct {
+	TaskID         string    `json:"task_id"`
+	AgentID        string    `json:"agent_id"`
+	Command        string    `json:"command"`
+	Args           []string  `json:"args"`
+	TimeoutSeconds int       `json:"timeout_seconds"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// ListTasks returns tasks (optionally for a specific agent).
+func (r *Registry) ListTasks(agentID string) []TaskSummary {
+	if r.db != nil {
+		ctx := context.Background()
+		var rows pgx.Rows
+		var err error
+		if agentID != "" {
+			rows, err = r.db.Query(ctx, "SELECT task_id, agent_id, command, args, timeout_seconds, status, created_at, updated_at FROM tasks WHERE agent_id=$1 ORDER BY updated_at DESC", agentID)
+		} else {
+			rows, err = r.db.Query(ctx, "SELECT task_id, agent_id, command, args, timeout_seconds, status, created_at, updated_at FROM tasks ORDER BY updated_at DESC LIMIT 200")
+		}
+		if err != nil {
+			return []TaskSummary{}
+		}
+		defer rows.Close()
+
+		out := make([]TaskSummary, 0)
+		for rows.Next() {
+			var t TaskSummary
+			var argsBytes []byte
+			if err := rows.Scan(&t.TaskID, &t.AgentID, &t.Command, &argsBytes, &t.TimeoutSeconds, &t.Status, &t.CreatedAt, &t.UpdatedAt); err != nil {
+				continue
+			}
+			_ = json.Unmarshal(argsBytes, &t.Args)
+			out = append(out, t)
+		}
+		return out
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]TaskSummary, 0)
+	if agentID != "" {
+		for _, t := range r.tasks[agentID] {
+			out = append(out, TaskSummary{
+				TaskID:         t.TaskID,
+				AgentID:        agentID,
+				Command:        t.Command,
+				Args:           t.Args,
+				TimeoutSeconds: t.Timeout,
+				Status:         "pending",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			})
+		}
+		return out
+	}
+	for aid, tasks := range r.tasks {
+		for _, t := range tasks {
+			out = append(out, TaskSummary{
+				TaskID:         t.TaskID,
+				AgentID:        aid,
+				Command:        t.Command,
+				Args:           t.Args,
+				TimeoutSeconds: t.Timeout,
+				Status:         "pending",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			})
+		}
+	}
+	return out
+}
+
 // GetTasks returns and clears queued tasks for an agent.
 func (r *Registry) GetTasks(agentID string) []api.TaskMessage {
 	if r.db != nil {

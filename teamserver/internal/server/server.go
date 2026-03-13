@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/auth"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/registry"
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/users"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,6 +24,7 @@ type Server struct {
 	mux      *http.ServeMux
 	logger   *log.Logger
 	registry *registry.Registry
+	users    *users.Store
 }
 
 func withCORS(next http.Handler) http.Handler {
@@ -40,16 +43,31 @@ func withCORS(next http.Handler) http.Handler {
 // New creates a new teamserver HTTP server.
 func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	mux := http.NewServeMux()
-	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New(pool)}
+	userStore := users.New(pool)
+	resetAdmin := os.Getenv("REDFORGE_ADMIN_RESET") == "1"
+	if err := userStore.EnsureAdmin(context.Background(), cfg.AdminUsername, cfg.AdminPassword, resetAdmin); err != nil {
+		logger.Printf("warning: failed to ensure admin user: %v", err)
+	}
+
+	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New(pool), users: userStore}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
 	mux.HandleFunc("/api/register", server.handleRegister)
 	mux.HandleFunc("/api/heartbeat", server.handleHeartbeat)
 	mux.HandleFunc("/api/task/result", server.handleTaskResult)
 	mux.HandleFunc("/api/login", server.handleLogin)
-	mux.Handle("/api/operator/agents", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleAgentList))))
-	mux.Handle("/api/operator/task", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskCreate))))
-	mux.Handle("/api/operator/results", AuthMiddleware(cfg.JWTSecret, RequireRole("admin", http.HandlerFunc(server.handleTaskResults))))
+	mux.Handle("/api/me", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMe)))
+	mux.Handle("/api/me/profile", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMeProfile)))
+	mux.Handle("/api/me/password", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMePassword)))
+
+	operatorReadRoles := []string{string(users.RoleAdmin), string(users.RoleOperator), string(users.RoleObserver)}
+	operatorWriteRoles := []string{string(users.RoleAdmin), string(users.RoleOperator)}
+	mux.Handle("/api/operator/agents", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleAgentList))))
+	mux.Handle("/api/operator/task", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleTaskCreate))))
+	mux.Handle("/api/operator/results", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTaskResults))))
+	mux.Handle("/api/operator/tasks", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTasksList))))
+
+	mux.Handle("/api/admin/users", AuthMiddleware(cfg.JWTSecret, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminUsers))))
 
 	return server
 }
@@ -62,7 +80,11 @@ func (s *Server) Listen(ctx context.Context) error {
 		Handler: withCORS(s.mux),
 	}
 
-	s.logger.Printf("teamserver listening on %s", addr)
+	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
+		s.logger.Printf("teamserver listening on https://0.0.0.0%s", addr)
+	} else {
+		s.logger.Printf("teamserver listening on http://0.0.0.0%s", addr)
+	}
 
 	go func() {
 		<-ctx.Done()
@@ -71,6 +93,9 @@ func (s *Server) Listen(ctx context.Context) error {
 		_ = httpServer.Shutdown(ctxShutdown)
 	}()
 
+	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
+		return httpServer.ListenAndServeTLS(s.config.TLSCertFile, s.config.TLSKeyFile)
+	}
 	return httpServer.ListenAndServe()
 }
 
@@ -214,12 +239,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if creds.Username != s.config.AdminUsername || creds.Password != s.config.AdminPassword {
+	u, err := s.users.Authenticate(r.Context(), creds.Username, creds.Password)
+	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	token, err := auth.GenerateToken(s.config.JWTSecret, creds.Username, "admin", s.config.TokenExpiryMins)
+	token, err := auth.GenerateToken(s.config.JWTSecret, u.Username, string(u.Role), s.config.TokenExpiryMins)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -232,4 +258,114 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAgentList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(s.registry.ListAgents())
+}
+
+func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
+	claims, ok := ClaimsFromRequest(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	u, err := s.users.GetByUsername(r.Context(), claims.Username)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"username":      u.Username,
+		"role":          u.Role,
+		"display_name":  u.DisplayName,
+		"created_at":    u.CreatedAt,
+		"updated_at":    u.UpdatedAt,
+		"token_expires": claims.ExpiresAt,
+	})
+}
+
+func (s *Server) handleMeProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	claims, ok := ClaimsFromRequest(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	var body struct {
+		DisplayName string `json:"display_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := s.users.UpdateProfile(r.Context(), claims.Username, body.DisplayName); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleMePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	claims, ok := ClaimsFromRequest(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	var body struct {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := s.users.ChangePassword(r.Context(), claims.Username, body.OldPassword, body.NewPassword); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		usersList, err := s.users.List(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(usersList)
+	case http.MethodPost:
+		var body struct {
+			Username    string `json:"username"`
+			Password    string `json:"password"`
+			Role        string `json:"role"`
+			DisplayName string `json:"display_name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := s.users.Create(r.Context(), body.Username, body.Password, users.Role(body.Role), body.DisplayName); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleTasksList(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Query().Get("agent_id")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(s.registry.ListTasks(agentID))
 }
