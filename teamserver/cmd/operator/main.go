@@ -75,8 +75,11 @@ func main() {
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 
-	agentTable, refreshAgents, focusAgents := newAgentTable(app, pages, serverURL, &token)
-	pages.AddPage("agents", agentTable, true, false)
+	agentView, refreshAgents, focusAgents, selectedAgentID := newAgentTable(app, pages, serverURL, &token)
+	pages.AddPage("agents", agentView, true, false)
+
+	tasksView, refreshTasks, focusTasks := newTasksTable(app, pages, serverURL, &token)
+	pages.AddPage("tasks", tasksView, true, false)
 
 	loginForm := newLoginForm(app, pages, serverURL, &token, func() {
 		if refreshAgents != nil {
@@ -85,8 +88,75 @@ func main() {
 		if focusAgents != nil {
 			focusAgents()
 		}
+		if refreshTasks != nil {
+			refreshTasks()
+		}
 	})
 	pages.AddPage("login", loginForm, true, true)
+
+	active := "agents"
+	switchTo := func(name string) {
+		active = name
+		pages.SwitchToPage(name)
+		switch name {
+		case "agents":
+			if focusAgents != nil {
+				focusAgents()
+			}
+		case "tasks":
+			if focusTasks != nil {
+				focusTasks()
+			}
+		}
+	}
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'q', 'Q':
+			app.Stop()
+			return nil
+		case '1':
+			switchTo("agents")
+			return nil
+		case '2':
+			switchTo("tasks")
+			return nil
+		case 'r', 'R':
+			if active == "tasks" && refreshTasks != nil {
+				refreshTasks()
+				return nil
+			}
+			if refreshAgents != nil {
+				refreshAgents()
+				return nil
+			}
+		case 't', 'T':
+			if active != "agents" {
+				return event
+			}
+			agentID := ""
+			if selectedAgentID != nil {
+				agentID = selectedAgentID()
+			}
+			if agentID != "" {
+				doTaskDialog(app, pages, serverURL, token, agentID)
+				return nil
+			}
+		case 'v', 'V':
+			if active != "agents" {
+				return event
+			}
+			agentID := ""
+			if selectedAgentID != nil {
+				agentID = selectedAgentID()
+			}
+			if agentID != "" {
+				showResultsDialog(app, pages, serverURL, token, agentID)
+				return nil
+			}
+		}
+		return event
+	})
 
 	if err := app.SetRoot(pages, true).EnableMouse(true).Run(); err != nil {
 		log.Fatalf("failed to run operator UI: %v", err)
@@ -95,7 +165,7 @@ func main() {
 
 func newLoginForm(app *tview.Application, pages *tview.Pages, serverURL string, token *string, onLogin func()) *tview.Form {
 	username := "admin"
-	password := "redforge"
+	password := "redforge-admin"
 
 	form := tview.NewForm().
 		AddInputField("Username", username, 20, nil, func(text string) { username = text }).
@@ -135,11 +205,11 @@ func newLoginForm(app *tview.Application, pages *tview.Pages, serverURL string, 
 	return form
 }
 
-func newAgentTable(app *tview.Application, pages *tview.Pages, serverURL string, token *string) (*tview.Flex, func(), func()) {
+func newAgentTable(app *tview.Application, pages *tview.Pages, serverURL string, token *string) (*tview.Flex, func(), func(), func() string) {
 	header := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft).
-		SetText("[red::b]REDFORGE[-] [gray]TUI v1.0[-]  [::d]R refresh  T task  V results  Q quit[-]")
+		SetText("[red::b]REDFORGE[-] [gray]TUI v1.0[-]  [::d]1 Agents  2 Tasks  R refresh  T task  V results  Q quit[-]")
 	header.SetBorder(true).SetBorderColor(tcell.ColorDarkRed)
 
 	table := tview.NewTable().SetSelectable(true, false)
@@ -201,32 +271,124 @@ func newAgentTable(app *tview.Application, pages *tview.Pages, serverURL string,
 		}
 	})
 
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Rune() {
-		case 'q', 'Q':
-			app.Stop()
-		case 'r', 'R':
-			refresh()
-		case 't', 'T':
-			row, _ := table.GetSelection()
-			if row <= 0 {
-				return event
-			}
-			agentID := table.GetCell(row, 0).Text
-			doTaskDialog(app, pages, serverURL, *token, agentID)
-		case 'v', 'V':
-			row, _ := table.GetSelection()
-			if row <= 0 {
-				return event
-			}
-			agentID := table.GetCell(row, 0).Text
-			showResultsDialog(app, pages, serverURL, *token, agentID)
+	refresh()
+	return flex, refresh, func() { app.SetFocus(table) }, func() string {
+		row, _ := table.GetSelection()
+		if row <= 0 {
+			return ""
 		}
-		return event
-	})
+		return table.GetCell(row, 0).Text
+	}
+}
+
+type taskEntry struct {
+	TaskID    string    `json:"task_id"`
+	AgentID   string    `json:"agent_id"`
+	Command   string    `json:"command"`
+	Args      []string  `json:"args"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func newTasksTable(app *tview.Application, pages *tview.Pages, serverURL string, token *string) (*tview.Flex, func(), func()) {
+	header := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignLeft).
+		SetText("[red::b]REDFORGE[-] [gray]TUI v1.0[-]  [::d]1 Agents  2 Tasks  R refresh  Q quit[-]")
+	header.SetBorder(true).SetBorderColor(tcell.ColorDarkRed)
+
+	table := tview.NewTable().SetSelectable(true, false)
+	table.SetBorder(true).SetBorderColor(tcell.ColorDarkRed).SetTitle("TASKS").SetTitleColor(tcell.ColorRed)
+	table.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorWhite))
+
+	status := tview.NewTextView().SetDynamicColors(true)
+	status.SetText("[gray]Ready.[-]")
+	status.SetBorder(true).SetBorderColor(tcell.ColorDarkRed).SetTitle("STATUS").SetTitleColor(tcell.ColorRed)
+
+	refresh := func() {
+		if strings.TrimSpace(*token) == "" {
+			status.SetText("[yellow]Not authenticated. Log in first.[-]")
+			return
+		}
+		status.SetText(fmt.Sprintf("[gray]Refreshing from %s...[-]", serverURL))
+		currentToken := strings.TrimSpace(*token)
+		go func(tok string) {
+			tasks, err := fetchTasks(serverURL, tok)
+			app.QueueUpdateDraw(func() {
+				if strings.TrimSpace(*token) == "" || strings.TrimSpace(*token) != tok {
+					return
+				}
+				if err != nil {
+					status.SetText(fmt.Sprintf("[red]refresh failed: %v", err))
+					return
+				}
+				table.Clear()
+				headers := []string{"Status", "Agent", "Task", "Command", "Updated"}
+				for i, h := range headers {
+					table.SetCell(0, i, tview.NewTableCell(h).
+						SetSelectable(false).
+						SetAttributes(tcell.AttrBold).
+						SetTextColor(tcell.ColorRed))
+				}
+				for r, t := range tasks {
+					row := r + 1
+					statusColor := tcell.ColorGray
+					switch strings.ToLower(t.Status) {
+					case "pending":
+						statusColor = tcell.ColorYellow
+					case "in-progress", "in_progress":
+						statusColor = tcell.ColorLightCyan
+					case "complete", "completed", "done":
+						statusColor = tcell.ColorGreen
+					case "failed", "error":
+						statusColor = tcell.ColorRed
+					}
+					table.SetCell(row, 0, tview.NewTableCell(strings.ToUpper(t.Status)).SetTextColor(statusColor))
+					table.SetCell(row, 1, tview.NewTableCell(shortText(t.AgentID, 10)).SetTextColor(tcell.ColorWhite))
+					table.SetCell(row, 2, tview.NewTableCell(shortText(t.TaskID, 12)).SetTextColor(tcell.ColorWhite))
+					table.SetCell(row, 3, tview.NewTableCell(t.Command).SetTextColor(tcell.ColorGray))
+					table.SetCell(row, 4, tview.NewTableCell(t.UpdatedAt.Format(time.RFC3339)).SetTextColor(tcell.ColorGray))
+				}
+				status.SetText(fmt.Sprintf("[green]Connected[-] to [white]%s[-]  Tasks: [white]%d[-]", serverURL, len(tasks)))
+			})
+		}(currentToken)
+	}
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.AddItem(header, 3, 0, false)
+	flex.AddItem(table, 0, 1, true)
+	flex.AddItem(status, 3, 0, false)
 
 	refresh()
 	return flex, refresh, func() { app.SetFocus(table) }
+}
+
+func fetchTasks(serverURL, token string) ([]taskEntry, error) {
+	req, _ := http.NewRequest("GET", serverURL+"/api/operator/tasks", nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	var tasks []taskEntry
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+func shortText(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	if n <= 1 {
+		return s[:n]
+	}
+	return s[:n-1] + "…"
 }
 
 func showModal(app *tview.Application, pages *tview.Pages, message string) {

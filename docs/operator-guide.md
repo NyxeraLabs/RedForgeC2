@@ -14,7 +14,7 @@ Example request:
 ```sh
 curl -X POST http://localhost:9080/api/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"redforge"}'
+  -d '{"username":"admin","password":"redforge-admin"}'
 ```
 
 Use the returned token for subsequent requests:
