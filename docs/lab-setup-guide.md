@@ -18,8 +18,8 @@ docker-compose up --build
 This starts:
 
 - `postgres`: database
-- `teamserver`: C2 server on port 8080
-- `ui`: operator UI on port 5173
+- `teamserver`: C2 server on port 9080
+- `ui`: operator UI on port 5174
 
 ## Custom Configuration
 

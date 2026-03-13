@@ -435,3 +435,171 @@ Realtime: WebSockets
 - [x] add documentation
 - [x] add diagrams
 - [x] prepare v1 release
+
+---
+
+# Milestone 12 — UI/TUI Mockup Parity (Actual)
+
+Bring the implemented UI/TUI up to the feature set described in `docs/ui-mockups.md` and validated in `docs/ui-implementation-audit.md`.
+
+## Issue 18 — Web UI Refactor & Navigation
+
+### Dev
+- [ ] split `App.tsx` into pages/components
+- [ ] add navigation (tabs/sidebar) and basic routing
+- [ ] improve agents view (table + details panel)
+- [ ] compute agent status from `last_seen`
+
+### QA
+- [ ] navigation smoke tests
+- [ ] auth persistence tests (localStorage token)
+
+### Commits
+- [ ] refactor ui structure
+- [ ] add routing/navigation
+- [ ] implement agent table + details
+
+---
+
+## Issue 19 — Interactive Console UX
+
+### Dev
+- [ ] per-agent console transcript view
+- [ ] command history (client-side)
+- [ ] results view with refresh + basic filtering
+- [ ] nicer task submission UX (timeouts, validation)
+
+### QA
+- [ ] command submission reliability tests
+- [ ] results rendering tests (large output)
+
+### Commits
+- [ ] add console page
+- [ ] add command history
+- [ ] improve results view
+
+---
+
+## Issue 20 — File Manager (v0 via Agent Commands)
+
+### Dev
+- [ ] browse remote filesystem via `ls <path>`
+- [ ] upload: local file → base64 → `upload <remote_path> <base64>`
+- [ ] download: `download <remote_path>` → base64 decode → browser download
+
+### QA
+- [ ] upload/download e2e tests (small + large files)
+- [ ] path traversal and invalid path tests
+
+### Commits
+- [ ] implement file manager page (v0)
+- [ ] add upload/download helpers
+
+---
+
+## Issue 21 — Telemetry Persistence + Operator APIs
+
+### Dev
+- [ ] persist telemetry from `/api/heartbeat` to database
+- [ ] add operator endpoints for telemetry (latest + optional series)
+- [ ] add Web UI telemetry panel (latest metrics first)
+
+### QA
+- [ ] telemetry ingest tests
+- [ ] operator telemetry API tests
+
+### Commits
+- [ ] add telemetry tables/migrations
+- [ ] store telemetry on heartbeat
+- [ ] add telemetry operator endpoints
+- [ ] implement telemetry UI panel
+
+---
+
+## Issue 22 — Alerts / Event Feed
+
+### Dev
+- [ ] define alert/event model (severity, type, agent, timestamp, message)
+- [ ] persist alerts/events to database
+- [ ] operator endpoints for alerts (+ basic filtering)
+- [ ] Web UI alerts panel + notifications
+
+### QA
+- [ ] alert ingestion tests
+- [ ] alert filtering tests
+
+### Commits
+- [ ] add alerts tables/migrations
+- [ ] add alerts operator endpoints
+- [ ] implement alerts UI panel
+
+---
+
+## Issue 23 — Real-Time Updates (SSE/WebSockets)
+
+### Dev
+- [ ] add real-time stream for agent updates, results, telemetry, and alerts (SSE or WebSockets)
+- [ ] update UI to subscribe instead of polling (fallback to polling)
+
+### QA
+- [ ] disconnect/reconnect tests
+- [ ] multi-agent update ordering tests
+
+### Commits
+- [ ] add realtime transport endpoints
+- [ ] wire UI realtime subscriptions
+
+---
+
+## Issue 24 — Reports (JSON Export → PDF Later)
+
+### Dev
+- [ ] JSON export of sessions/tasks/results/telemetry/alerts
+- [ ] Web UI reports page to download exports
+- [ ] (later) PDF export
+
+### QA
+- [ ] export correctness tests
+- [ ] large dataset export tests
+
+### Commits
+- [ ] add reports endpoints (json)
+- [ ] implement reports UI
+
+---
+
+## Issue 25 — Network Topology / Map Visualization
+
+### Dev
+- [ ] define topology graph model (nodes/edges)
+- [ ] persist topology events/edges
+- [ ] Web UI topology panel (D3/Recharts)
+
+### QA
+- [ ] topology model validation tests
+- [ ] UI render performance smoke tests
+
+### Commits
+- [ ] add topology schema
+- [ ] add topology endpoints
+- [ ] implement topology UI
+
+---
+
+## Issue 26 — TUI MVP
+
+### Dev
+- [ ] choose TUI stack (Python `textual`/`rich` or Rust `ratatui`/`crossterm`)
+- [ ] implement sessions panel + agent selection
+- [ ] implement command input + task enqueue
+- [ ] implement results view (polling first)
+- [ ] add telemetry + alerts panels after Issue 21/22
+
+### QA
+- [ ] TUI smoke tests (login, list agents, run command, view result)
+- [ ] cross-platform checks (linux/mac/windows where applicable)
+
+### Commits
+- [ ] add tui project skeleton
+- [ ] implement tui sessions + tasking
+- [ ] implement tui results view

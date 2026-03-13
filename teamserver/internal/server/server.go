@@ -11,6 +11,7 @@ import (
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/auth"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/config"
+	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/db"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/registry"
 	"github.com/google/uuid"
 )
@@ -26,7 +27,13 @@ type Server struct {
 // New creates a new teamserver HTTP server.
 func New(cfg *config.Config, logger *log.Logger) *Server {
 	mux := http.NewServeMux()
-	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New()}
+
+	pool, err := db.Connect(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		logger.Fatalf("failed to connect to database: %v", err)
+	}
+
+	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New(pool)}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
 	mux.HandleFunc("/api/register", server.handleRegister)
@@ -106,7 +113,11 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 
 	s.registry.UpdateHeartbeat(hb.AgentID)
 
-	tasks := s.registry.GetTasks(hb.AgentID)
+	tasks, err := s.registry.GetTasks(hb.AgentID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	resp := api.HeartbeatResponse{
 		Status: "ok",
 		Tasks:  tasks,
@@ -134,10 +145,10 @@ func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := api.TaskMessage{
-		TaskID:        uuid.NewString(),
-		Command:       req.Command,
-		Args:          req.Args,
-		Timeout:       req.TimeoutSecond,
+		TaskID:  uuid.NewString(),
+		Command: req.Command,
+		Args:    req.Args,
+		Timeout: req.TimeoutSecond,
 	}
 	s.registry.AddTask(req.AgentID, task)
 
@@ -180,7 +191,11 @@ func (s *Server) handleTaskResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := s.registry.GetResults(agentID)
+	results, err := s.registry.GetResults(agentID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(results)
 }
@@ -217,5 +232,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAgentList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(s.registry.ListAgents())
+	agents, err := s.registry.ListAgents()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(agents)
 }

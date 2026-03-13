@@ -17,7 +17,7 @@ This document provides a quick overview for getting RedForgeC2 running locally.
 docker-compose up --build
 ```
 
-2. Open the UI at `http://localhost:5173`.
+2. Open the UI at `http://localhost:5174`.
 
 ## Running the teamserver locally
 
