@@ -12,7 +12,7 @@ Operators authenticate using username/password and receive a JWT token.
 Example request:
 
 ```sh
-curl -X POST http://localhost:8080/api/login \
+curl -X POST http://localhost:9080/api/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"redforge"}'
 ```
@@ -20,7 +20,7 @@ curl -X POST http://localhost:8080/api/login \
 Use the returned token for subsequent requests:
 
 ```sh
-curl -H "Authorization: Bearer <token>" http://localhost:8080/api/operator/agents
+curl -H "Authorization: Bearer <token>" http://localhost:9080/api/operator/agents
 ```
 
 ## Tasking
@@ -30,7 +30,7 @@ Operators can enqueue tasks for agents using the `/api/operator/task` endpoint.
 Example:
 
 ```sh
-curl -X POST http://localhost:8080/api/operator/task \
+curl -X POST http://localhost:9080/api/operator/task \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"<agent-id>","command":"ls","args":["/tmp"],"timeout_seconds":60}'
@@ -41,5 +41,5 @@ curl -X POST http://localhost:8080/api/operator/task \
 Use `/api/operator/results` to retrieve stored task results for an agent:
 
 ```sh
-curl -H "Authorization: Bearer <token>" "http://localhost:8080/api/operator/results?agent_id=<agent-id>"
+curl -H "Authorization: Bearer <token>" "http://localhost:9080/api/operator/results?agent_id=<agent-id>"
 ```
