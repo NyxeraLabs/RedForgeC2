@@ -12,8 +12,7 @@ python3 -m venv .venv
 # Optional env overrides
 export REDFORGE_TEAMSERVER_URL="http://localhost:9080"
 export REDFORGE_USERNAME="admin"
-export REDFORGE_PASSWORD="redforge"
+export REDFORGE_PASSWORD="<admin-password>"
 
 .venv/bin/python app.py
 ```
-

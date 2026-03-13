@@ -53,7 +53,7 @@ class RedForgeTUI(App):
         super().__init__()
         self.base_url = os.environ.get("REDFORGE_TEAMSERVER_URL", "http://localhost:9080").rstrip("/")
         self.username = os.environ.get("REDFORGE_USERNAME", "admin")
-        self.password = os.environ.get("REDFORGE_PASSWORD", "redforge")
+        self.password = os.environ.get("REDFORGE_PASSWORD", "")
         self.token = os.environ.get("REDFORGE_TOKEN", "")
         self.selected_agent_id: str = ""
 
@@ -250,4 +250,3 @@ class RedForgeTUI(App):
 
 if __name__ == "__main__":
     RedForgeTUI().run()
-

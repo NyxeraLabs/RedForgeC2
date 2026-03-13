@@ -12,7 +12,7 @@ export function AuthCard({
   onToken: (next: string) => void;
 }) {
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("redforge");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string>("");
 
   const isAuthenticated = token.length > 0;
@@ -67,4 +67,3 @@ export function AuthCard({
     </Card>
   );
 }
-

@@ -40,7 +40,7 @@ func Load() (*Config, error) {
 
 	adminPass := os.Getenv("REDFORGE_ADMIN_PASS")
 	if adminPass == "" {
-		adminPass = "redforge"
+		return nil, fmt.Errorf("REDFORGE_ADMIN_PASS is required")
 	}
 
 	expires := 60
