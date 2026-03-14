@@ -1,0 +1,24 @@
+# Secrets / env
+.env
+.env.*
+
+# VCS
+.git
+.github
+
+# Rust
+target
+
+# Node
+**/node_modules
+**/.cache
+**/.parcel-cache
+**/.vite
+
+# Builds / artifacts
+dist
+build
+coverage
+playwright-report
+test-results
+
