@@ -111,6 +111,11 @@ func main() {
 	}
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Handle ONLY keyboard shortcuts; let table navigation work normally
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab || event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown || event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyRight || event.Key() == tcell.KeyEnter {
+			return event
+		}
+
 		switch event.Rune() {
 		case 'q', 'Q':
 			app.Stop()
@@ -265,12 +270,7 @@ func newAgentTable(app *tview.Application, pages *tview.Pages, serverURL string,
 	flex.AddItem(table, 0, 1, true)
 	flex.AddItem(status, 3, 0, false)
 
-	table.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEscape {
-			app.Stop()
-		}
-	})
-
+	// Don't close on Escape; only 'q'/'Q' will quit
 	refresh()
 	return flex, refresh, func() { app.SetFocus(table) }, func() string {
 		row, _ := table.GetSelection()
