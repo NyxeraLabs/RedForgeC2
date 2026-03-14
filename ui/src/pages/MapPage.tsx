@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { feature } from "topojson-client";
+import countries110m from "world-atlas/countries-110m.json";
 
 type AgentNode = {
   id: string;
@@ -22,16 +25,13 @@ function statusColor(status: "ok" | "warn" | "bad") {
   return "#ef4444";
 }
 
-function project(lat: number, lon: number, width: number, height: number) {
-  // Simple equirectangular projection for mock UI.
-  const x = ((lon + 180) / 360) * width;
-  const y = ((90 - lat) / 180) * height;
-  return { x, y };
-}
-
 export function MapPage() {
-  const width = 940;
-  const height = 520;
+  const [hovered, setHovered] = useState<AgentNode | null>(null);
+
+  const geoFeatures = useMemo(() => {
+    const geo = feature(countries110m as any, (countries110m as any).objects.countries);
+    return (geo as any).features || [];
+  }, []);
 
   return (
     <div className="page">
@@ -50,96 +50,70 @@ export function MapPage() {
           <div className="panel-body" style={{ padding: 18, display: "grid", gap: 14 }}>
             <div
               style={{
+                position: "relative",
                 borderRadius: 14,
-                background: "rgba(5, 5, 10, 0.55)",
+                background: "rgba(5, 5, 10, 0.70)",
                 border: "1px solid rgba(255, 255, 255, 0.12)",
                 boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
                 overflow: "hidden",
               }}
             >
-              <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-                <defs>
-                  <linearGradient id="ocean" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#05101f" />
-                    <stop offset="100%" stopColor="#000" />
-                  </linearGradient>
-                  <linearGradient id="land" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#1b1f28" />
-                    <stop offset="100%" stopColor="#0e0f14" />
-                  </linearGradient>
-                </defs>
-
-                {/* background */}
-                <rect width={width} height={height} fill="url(#ocean)" />
-                {/* simplified grid */}
-                {[...Array(9)].map((_, i) => (
-                  <line
-                    key={`lon-${i}`}
-                    x1={(i * width) / 8}
-                    y1={0}
-                    x2={(i * width) / 8}
-                    y2={height}
-                    stroke="rgba(255,255,255,0.08)"
-                    strokeWidth={1}
-                  />
-                ))}
-                {[...Array(5)].map((_, i) => (
-                  <line
-                    key={`lat-${i}`}
-                    x1={0}
-                    y1={(i * height) / 4}
-                    x2={width}
-                    y2={(i * height) / 4}
-                    stroke="rgba(255,255,255,0.08)"
-                    strokeWidth={1}
-                  />
-                ))}
-
-                {/* agent edges */}
-                {agents.map((agent) => {
-                  const start = project(agent.lat, agent.lon, width, height);
-                  return agent.connectedTo.map((to) => {
-                    const target = agents.find((a) => a.id === to);
-                    if (!target) return null;
-                    const end = project(target.lat, target.lon, width, height);
-                    return (
-                      <line
-                        key={`${agent.id}-${to}`}
-                        x1={start.x}
-                        y1={start.y}
-                        x2={end.x}
-                        y2={end.y}
-                        stroke="rgba(255,255,255,0.25)"
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
+              <ComposableMap
+                projection="geoNaturalEarth1"
+                width={940}
+                height={520}
+                projectionConfig={{ scale: 180 }}
+                style={{ width: "100%", height: "auto" }}
+              >
+                <Geographies geography={{ type: "FeatureCollection", features: geoFeatures }}>
+                  {({ geographies }) =>
+                    geographies.map((geo) => (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill="rgba(255,255,255,0.04)"
+                        stroke="rgba(255,255,255,0.15)"
+                        strokeWidth={0.5}
                       />
-                    );
-                  });
-                })}
+                    ))
+                  }
+                </Geographies>
 
-                {/* agent nodes */}
-                {agents.map((agent) => {
-                  const { x, y } = project(agent.lat, agent.lon, width, height);
-                  return (
-                    <g key={agent.id}>
-                      <circle cx={x} cy={y} r={10} fill={statusColor(agent.status)} stroke="rgba(0,0,0,0.5)" strokeWidth={2} />
-                      <text
-                        x={x + 14}
-                        y={y + 4}
-                        fontSize={12}
-                        fill="rgba(255,255,255,0.9)"
-                        fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                      >
-                        {agent.label}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+                {agents.map((agent) => (
+                  <Marker
+                    key={agent.id}
+                    coordinates={[agent.lon, agent.lat]}
+                    onMouseEnter={() => setHovered(agent)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    <circle cx={0} cy={0} r={8} fill={statusColor(agent.status)} stroke="#000" strokeWidth={2} />
+                  </Marker>
+                ))}
+              </ComposableMap>
+
+              {hovered ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 18,
+                    right: 18,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "rgba(0,0,0,0.75)",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "0.9rem",
+                    maxWidth: 240,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{hovered.label}</div>
+                  <div>Location: {hovered.lat.toFixed(2)}, {hovered.lon.toFixed(2)}</div>
+                  <div>Status: {hovered.status.toUpperCase()}</div>
+                </div>
+              ) : null}
 
               <div style={{ padding: 14, color: "rgba(235, 235, 245, 0.75)" }}>
-                Mocked global topology: each node represents an agent location (geo-coded) and dashed lines show known connections.
-                In production, this will be populated by real beaconing telemetry and topology correlation.
+                World map is rendered with a dark theme; node markers represent agent locations and hover reveals metadata. Connections are mocked for demo.
               </div>
             </div>
 
