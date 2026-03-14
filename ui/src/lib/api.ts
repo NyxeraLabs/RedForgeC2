@@ -82,6 +82,10 @@ export type Agent = {
   version: string;
   last_seen: string;
   registered: string;
+  heartbeat_failures?: number;
+  heartbeat_last_error?: string;
+  heartbeat_last_attempt?: string;
+  heartbeat_last_backoff_ms?: number;
 };
 
 export async function listAgents(): Promise<Agent[]> {

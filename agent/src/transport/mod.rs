@@ -8,3 +8,7 @@ pub trait Transport {
     /// Closes the transport and cleans up resources.
     fn close(&mut self) -> std::io::Result<()>;
 }
+
+pub mod https;
+pub mod tcp;
+pub mod dns;

@@ -31,6 +31,14 @@ pub struct TaskResult {
     pub timestamp: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TransportStatus {
+    pub consecutive_failures: u64,
+    pub last_error: Option<String>,
+    pub last_backoff_ms: Option<u64>,
+    pub last_attempt_at: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TelemetryPayload {
     pub agent_id: String,
@@ -45,6 +53,8 @@ pub struct HeartbeatRequest {
     pub agent_id: String,
     pub token: String,
     pub telemetry: TelemetryPayload,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transport: Option<TransportStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -131,6 +131,8 @@ export function DashboardPage() {
                   <th>OS</th>
                   <th>Arch</th>
                   <th>HB</th>
+                  <th>Fails</th>
+                  <th>Last Err</th>
                   <th>Last Seen</th>
                 </tr>
               </thead>
@@ -151,6 +153,10 @@ export function DashboardPage() {
                     <td>{a.arch}</td>
                     <td>
                       <span className={heartbeatClass(a.last_seen)}>{ageSeconds(a.last_seen)}s</span>
+                    </td>
+                    <td>{a.heartbeat_failures ?? 0}</td>
+                    <td title={a.heartbeat_last_error || ""}>
+                      {a.heartbeat_last_error ? a.heartbeat_last_error.slice(0, 24) : "-"}
                     </td>
                     <td>{new Date(a.last_seen).toLocaleString()}</td>
                   </tr>
