@@ -1,0 +1,155 @@
+.scope {
+  min-height: 100vh;
+  color: rgba(255, 255, 255, 0.92);
+  background: radial-gradient(1200px 700px at 20% 15%, rgba(255, 0, 51, 0.25), transparent 60%),
+    radial-gradient(900px 600px at 75% 70%, rgba(255, 0, 51, 0.16), transparent 55%),
+    radial-gradient(700px 450px at 55% 25%, rgba(255, 255, 255, 0.06), transparent 65%),
+    #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.scope::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 3px);
+  opacity: 0.25;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.chrome {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.40);
+  padding: 18px 16px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.logo {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(255, 0, 51, 0.35));
+}
+
+.brandText {
+  display: grid;
+  gap: 4px;
+}
+
+.brandTitle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+
+.brandSub {
+  color: rgba(235, 235, 245, 0.68);
+  font-size: 0.85rem;
+}
+
+.nav {
+  display: grid;
+  gap: 10px;
+}
+
+.navItem {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 12px;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
+}
+
+.navItem:hover {
+  border-color: rgba(255, 0, 51, 0.22);
+  background: rgba(255, 0, 51, 0.06);
+}
+
+.navItemActive {
+  border-color: rgba(255, 0, 51, 0.34);
+  background: rgba(255, 0, 51, 0.10);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55) inset;
+}
+
+.hint {
+  color: rgba(235, 235, 245, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+.main {
+  min-width: 0;
+  padding: 22px 24px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 0, 51, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.12), rgba(0, 0, 0, 0.10));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.headTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.headMeta {
+  margin-top: 6px;
+  color: rgba(235, 235, 245, 0.68);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 0, 51, 0.28);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.86);
+}
+

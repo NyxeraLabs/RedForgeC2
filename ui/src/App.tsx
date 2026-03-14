@@ -3,7 +3,7 @@ import { BrowserRouter, Link, Route, Routes, useNavigate } from "react-router-do
 import { ToastProvider } from "./components/ToastProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
-import { DemoPage } from "./pages/DemoPage";
+import { DemoApp } from "./demo/DemoApp";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -65,7 +65,7 @@ export default function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/demo" element={<DemoPage />} />
+          <Route path="/demo/*" element={<DemoApp />} />
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<Shell />} />
