@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/api"
@@ -15,8 +16,40 @@ import (
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/registry"
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/users"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// wsHub is a lightweight websocket broadcaster used for real-time UI updates.
+// It keeps a set of connected websocket clients and broadcasts JSON payloads to all of them.
+type wsHub struct {
+	mu    sync.Mutex
+	conns map[*websocket.Conn]struct{}
+}
+
+func newWsHub() *wsHub {
+	return &wsHub{conns: make(map[*websocket.Conn]struct{})}
+}
+
+func (h *wsHub) add(conn *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.conns[conn] = struct{}{}
+}
+
+func (h *wsHub) remove(conn *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.conns, conn)
+}
+
+func (h *wsHub) broadcast(message []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for conn := range h.conns {
+		_ = conn.WriteMessage(websocket.TextMessage, message)
+	}
+}
 
 // Server represents the teamserver HTTP API.
 type Server struct {
@@ -25,6 +58,7 @@ type Server struct {
 	logger   *log.Logger
 	registry *registry.Registry
 	users    *users.Store
+	wsHub    *wsHub
 
 	hardening    hardeningConfig
 	loginLimiter *ipRateLimiter
@@ -46,6 +80,7 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 		logger:       logger,
 		registry:     registry.New(pool),
 		users:        userStore,
+		wsHub:        newWsHub(),
 		hardening:    hard,
 		loginLimiter: newIPRateLimiter(hard.loginRPM, time.Minute),
 	}
@@ -55,18 +90,20 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	mux.HandleFunc("/api/heartbeat", server.handleHeartbeat)
 	mux.HandleFunc("/api/task/result", server.handleTaskResult)
 	mux.Handle("/api/login", withLoginRateLimit(server.loginLimiter, http.HandlerFunc(server.handleLogin)))
-	mux.Handle("/api/me", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMe)))
-	mux.Handle("/api/me/profile", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMeProfile)))
-	mux.Handle("/api/me/password", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMePassword)))
+	mux.Handle("/api/me", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleMe)))
+	mux.Handle("/api/me/profile", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleMeProfile)))
+	mux.Handle("/api/me/password", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleMePassword)))
 
 	operatorReadRoles := []string{string(users.RoleAdmin), string(users.RoleOperator), string(users.RoleObserver)}
 	operatorWriteRoles := []string{string(users.RoleAdmin), string(users.RoleOperator)}
-	mux.Handle("/api/operator/agents", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleAgentList))))
-	mux.Handle("/api/operator/task", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleTaskCreate))))
-	mux.Handle("/api/operator/results", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTaskResults))))
-	mux.Handle("/api/operator/tasks", AuthMiddleware(cfg.JWTSecret, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTasksList))))
+	mux.Handle("/api/operator/agents", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleAgentList))))
+	mux.Handle("/api/operator/task", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleTaskCreate))))
+	mux.Handle("/api/operator/results", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTaskResults))))
+	mux.Handle("/api/operator/tasks", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTasksList))))
 
-	mux.Handle("/api/admin/users", AuthMiddleware(cfg.JWTSecret, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminUsers))))
+	mux.Handle("/api/admin/users", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminUsers))))
+	mux.Handle("/api/admin/api-tokens", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminAPITokens))))
+	mux.Handle("/api/ws", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleWebsocket)))
 
 	return server
 }
@@ -75,10 +112,17 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 func (s *Server) Listen(ctx context.Context) error {
 	addr := fmt.Sprintf(":%s", s.config.Port)
 	handler := http.Handler(s.mux)
+	// Audit all requests for operational visibility and compliance.
+	handler = withAuditLog(s.logger, handler)
 	handler = withBodyLimit(s.hardening.maxBodyBytes, handler)
 	handler = withCORS(s.hardening.allowedOrigins, handler)
 	handler = withSecurityHeaders(handler)
 	handler = withRequestID(handler)
+
+	// Enforce TLS if explicitly configured.
+	if s.config.RequireTLS && (s.config.TLSCertFile == "" || s.config.TLSKeyFile == "") {
+		return fmt.Errorf("TLS is required (REDFORGE_REQUIRE_TLS=1) but TLS cert/key are not configured")
+	}
 
 	httpServer := &http.Server{
 		Addr:              addr,
@@ -134,6 +178,9 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "token": token})
+
+	// Notify connected UIs that agent state has changed.
+	s.broadcastState()
 }
 
 func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +210,9 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+
+	// Notify connected UIs that agent/task state may have changed.
+	s.broadcastState()
 }
 
 func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
@@ -374,8 +424,99 @@ func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleAdminAPITokens(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		tokens, err := s.users.ListAPITokens(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(tokens)
+	case http.MethodPost:
+		var body struct {
+			Username       string `json:"username"`
+			Description    string `json:"description"`
+			ExpiresMinutes int    `json:"expires_minutes"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		var expiresAt *time.Time
+		if body.ExpiresMinutes > 0 {
+			t := time.Now().Add(time.Duration(body.ExpiresMinutes) * time.Minute)
+			expiresAt = &t
+		}
+
+		token, err := s.users.CreateAPIToken(r.Context(), body.Username, body.Description, expiresAt)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
 func (s *Server) handleTasksList(w http.ResponseWriter, r *http.Request) {
 	agentID := r.URL.Query().Get("agent_id")
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(s.registry.ListTasks(agentID))
+}
+
+// wsStatePayload is used to send full state snapshots over websocket.
+type wsStatePayload struct {
+	Type   string                 `json:"type"`
+	Agents []*registry.Agent      `json:"agents,omitempty"`
+	Tasks  []registry.TaskSummary `json:"tasks,omitempty"`
+}
+
+func (s *Server) broadcastState() {
+	payload := wsStatePayload{
+		Type:   "state",
+		Agents: s.registry.ListAgents(),
+		Tasks:  s.registry.ListTasks(""),
+	}
+	b, _ := json.Marshal(payload)
+	s.wsHub.broadcast(b)
+}
+
+func (s *Server) sendState(conn *websocket.Conn) error {
+	payload := wsStatePayload{
+		Type:   "state",
+		Agents: s.registry.ListAgents(),
+		Tasks:  s.registry.ListTasks(""),
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return conn.WriteMessage(websocket.TextMessage, b)
+}
+
+func (s *Server) handleWebsocket(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	s.wsHub.add(conn)
+	defer s.wsHub.remove(conn)
+
+	_ = s.sendState(conn)
+
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}
 }
