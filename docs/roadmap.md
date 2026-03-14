@@ -259,8 +259,8 @@ Realtime: WebSockets
 - [x] navigation system
 
 ### QA
-- [ ] UI navigation tests
-- [ ] authentication flow tests
+- [x] UI navigation tests
+- [x] authentication flow tests
 
 ### Commits
 - [x] initialize react ui
