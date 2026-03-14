@@ -26,7 +26,7 @@ type Server struct {
 	registry *registry.Registry
 	users    *users.Store
 
-	hardening   hardeningConfig
+	hardening    hardeningConfig
 	loginLimiter *ipRateLimiter
 }
 
@@ -41,13 +41,13 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 
 	hard := hardeningFromEnv()
 	server := &Server{
-		config:        cfg,
-		mux:           mux,
-		logger:        logger,
-		registry:      registry.New(pool),
-		users:         userStore,
-		hardening:     hard,
-		loginLimiter:  newIPRateLimiter(hard.loginRPM, time.Minute),
+		config:       cfg,
+		mux:          mux,
+		logger:       logger,
+		registry:     registry.New(pool),
+		users:        userStore,
+		hardening:    hard,
+		loginLimiter: newIPRateLimiter(hard.loginRPM, time.Minute),
 	}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
@@ -153,7 +153,7 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.registry.UpdateHeartbeat(hb.AgentID)
+	s.registry.UpdateHeartbeat(hb.AgentID, hb.Transport)
 
 	tasks := s.registry.GetTasks(hb.AgentID)
 	resp := api.HeartbeatResponse{

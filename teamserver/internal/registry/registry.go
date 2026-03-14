@@ -15,15 +15,19 @@ import (
 
 // Agent represents a registered agent.
 type Agent struct {
-	AgentID    string            `json:"agent_id"`
-	Token      string            `json:"token"`
-	OS         string            `json:"os"`
-	Arch       string            `json:"arch"`
-	Hostname   string            `json:"hostname"`
-	Version    string            `json:"version"`
-	Metadata   map[string]string `json:"metadata,omitempty"`
-	LastSeen   time.Time         `json:"last_seen"`
-	Registered time.Time         `json:"registered"`
+	AgentID              string            `json:"agent_id"`
+	Token                string            `json:"token"`
+	OS                   string            `json:"os"`
+	Arch                 string            `json:"arch"`
+	Hostname             string            `json:"hostname"`
+	Version              string            `json:"version"`
+	Metadata             map[string]string `json:"metadata,omitempty"`
+	LastSeen             time.Time         `json:"last_seen"`
+	Registered           time.Time         `json:"registered"`
+	HeartbeatFailures    int               `json:"heartbeat_failures,omitempty"`
+	HeartbeatLastError   string            `json:"heartbeat_last_error,omitempty"`
+	HeartbeatLastAttempt time.Time         `json:"heartbeat_last_attempt,omitempty"`
+	HeartbeatLastBackoff int64             `json:"heartbeat_last_backoff_ms,omitempty"`
 }
 
 // Registry manages registered agents, tasks, and results.
@@ -306,7 +310,7 @@ func (r *Registry) ValidateToken(agentID, token string) bool {
 }
 
 // UpdateHeartbeat updates the last-seen timestamp for an agent.
-func (r *Registry) UpdateHeartbeat(agentID string) {
+func (r *Registry) UpdateHeartbeat(agentID string, transport *api.TransportStatus) {
 	if r.db != nil {
 		ctx := context.Background()
 		_, _ = r.db.Exec(ctx, "UPDATE agents SET last_seen=$2 WHERE agent_id=$1", agentID, time.Now().UTC())
@@ -318,6 +322,17 @@ func (r *Registry) UpdateHeartbeat(agentID string) {
 
 	if agent, ok := r.agents[agentID]; ok {
 		agent.LastSeen = time.Now()
+		if transport != nil {
+			agent.HeartbeatFailures = transport.ConsecutiveFailures
+			agent.HeartbeatLastError = transport.LastError
+			// Parse attempt timestamp if present, otherwise leave as zero.
+			if transport.LastAttemptAt != "" {
+				if t, err := time.Parse(time.RFC3339, transport.LastAttemptAt); err == nil {
+					agent.HeartbeatLastAttempt = t
+				}
+			}
+			agent.HeartbeatLastBackoff = transport.LastBackoffMs
+		}
 	}
 }
 
