@@ -38,6 +38,31 @@ cd teamserver
 go run ./cmd/teamserver
 ```
 
+## TLS Enforcement (Optional but recommended)
+
+RedForgeC2 supports mTLS and can be configured to refuse non-TLS connections.
+
+- Set `REDFORGE_TLS_CERT_FILE` and `REDFORGE_TLS_KEY_FILE` to point to your certificate and key.
+- Enable strict TLS enforcement by setting `REDFORGE_REQUIRE_TLS=1`.
+
+If `REDFORGE_REQUIRE_TLS` is enabled, the teamserver will fail to start unless both the cert and key are configured.
+
+The teamserver emits audit-style logs for every API request (user, IP, path, status, duration) via standard output for easy log collection.
+
+## API Tokens
+
+The teamserver supports long-lived API tokens for automation and non-interactive access. Tokens can be created by an administrator via the `/api/admin/api-tokens` endpoint and are only shown once when created. Store them securely.
+
+Example request (as an admin):
+
+```sh
+curl -X POST \
+  -H "Authorization: Bearer <admin-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"operator","description":"CI runner","expires_minutes":1440}' \
+  http://localhost:9080/api/admin/api-tokens
+```
+
 ## Running the agent locally
 
 ```sh

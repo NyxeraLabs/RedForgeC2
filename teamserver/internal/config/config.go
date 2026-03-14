@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds teamserver runtime configuration.
@@ -16,6 +17,7 @@ type Config struct {
 	TokenExpiryMins int
 	TLSCertFile     string
 	TLSKeyFile      string
+	RequireTLS      bool
 }
 
 // Load reads configuration from environment variables.
@@ -52,6 +54,13 @@ func Load() (*Config, error) {
 		}
 	}
 
+	requireTLS := false
+	if v := strings.TrimSpace(os.Getenv("REDFORGE_REQUIRE_TLS")); v != "" {
+		if v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes") {
+			requireTLS = true
+		}
+	}
+
 	return &Config{
 		Port:            port,
 		DatabaseURL:     db,
@@ -61,5 +70,6 @@ func Load() (*Config, error) {
 		TokenExpiryMins: expires,
 		TLSCertFile:     os.Getenv("REDFORGE_TLS_CERT_FILE"),
 		TLSKeyFile:      os.Getenv("REDFORGE_TLS_KEY_FILE"),
+		RequireTLS:      requireTLS,
 	}, nil
 }

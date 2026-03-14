@@ -293,24 +293,24 @@ Realtime: WebSockets
 ### Commits
 - [x] implement agent table
 - [x] add agent details panel
-- [ ] add real-time websocket updates
+- [x] add real-time websocket updates
 
 ---
 
 ## Issue 13 — Interactive Console
 
 ### Dev
-- [ ] agent console terminal
-- [ ] command submission
-- [ ] result streaming
+- [x] agent console terminal
+- [x] command submission
+- [x] result streaming
 
 ### QA
-- [ ] console reliability tests
+- [x] console reliability tests
 
 ### Commits
-- [ ] implement console UI
-- [ ] add websocket command streaming
-- [ ] add command history
+- [x] implement console UI
+- [x] add websocket command streaming
+- [x] add command history
 
 ---
 
@@ -391,19 +391,19 @@ Realtime: WebSockets
 # Milestone 9 — Security Hardening
 
 ### Dev
-- [ ] TLS enforcement
-- [ ] audit logging
-- [ ] API token system
+- [x] TLS enforcement
+- [x] audit logging
+- [x] API token system
 
 ### QA
-- [ ] auth bypass tests
-- [ ] session security tests
+- [x] auth bypass tests
+- [x] session security tests
 
 ### Commits
-- [ ] enforce TLS
-- [ ] add audit logging
-- [ ] implement api tokens
-- [ ] add security tests
+- [x] enforce TLS
+- [x] add audit logging
+- [x] implement api tokens
+- [x] add security tests
 
 ---
 

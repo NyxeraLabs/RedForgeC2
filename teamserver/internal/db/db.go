@@ -34,6 +34,14 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
+		`CREATE TABLE IF NOT EXISTS api_tokens (
+			token_hash TEXT PRIMARY KEY,
+			username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+			description TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			expires_at TIMESTAMPTZ,
+			last_used TIMESTAMPTZ
+		);`,
 		`CREATE TABLE IF NOT EXISTS agents (
 			agent_id TEXT PRIMARY KEY,
 			token TEXT NOT NULL,
