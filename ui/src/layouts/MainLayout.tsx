@@ -2,6 +2,7 @@ import React from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getMe } from "../lib/api";
 import { setToken } from "../lib/storage";
+import { BuildStamp } from "../components/BuildStamp";
 import logoUrl from "../assets/RedForgeC2-Logo-Transp.png";
 import styles from "../demo/DemoLayout.module.css";
 
@@ -96,7 +97,9 @@ export function MainLayout() {
             <div className={styles.chips}>
               <span className={styles.chip}>MODE: LIVE</span>
               <span className={styles.chip}>DATA: API</span>
-              <span className={styles.chip}>BUILD: UI</span>
+              <span className={styles.chip}>
+                <BuildStamp />
+              </span>
             </div>
           </header>
 

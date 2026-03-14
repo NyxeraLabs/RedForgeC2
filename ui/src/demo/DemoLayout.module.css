@@ -45,8 +45,8 @@
 }
 
 .logo {
-  width: 112px;
-  height: 112px;
+  width: 168px;
+  height: 168px;
   object-fit: contain;
   filter: drop-shadow(0 0 24px rgba(255, 0, 51, 0.35));
 }
@@ -152,4 +152,3 @@
   background: rgba(0, 0, 0, 0.22);
   color: rgba(255, 255, 255, 0.86);
 }
-

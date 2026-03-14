@@ -1,6 +1,8 @@
 # Makefile for RedForgeC2 local workflows
 
-COMPOSE := docker compose --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(CURDIR)/docker/docker-compose.yml
+REDFORGE_BUILD_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+REDFORGE_BUILD_EPOCH ?= $(shell date +%s)
+COMPOSE := REDFORGE_BUILD_SHA=$(REDFORGE_BUILD_SHA) REDFORGE_BUILD_EPOCH=$(REDFORGE_BUILD_EPOCH) docker compose --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(CURDIR)/docker/docker-compose.yml
 
 .PHONY: up down ps logs build db-reset clean
 .PHONY: env-init env-check
@@ -31,7 +33,7 @@ env-check:
 	done
 
 up: env-init env-check
-	$(COMPOSE) up --build
+	$(COMPOSE) up --build --force-recreate
 
 down:
 	$(COMPOSE) down
