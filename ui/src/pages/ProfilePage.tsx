@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { changePassword, getMe, updateProfile } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
+import styles from "./ProfilePage.module.css";
 
 export function ProfilePage() {
   const toasts = useToasts();
@@ -39,7 +40,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="page">
+    <div className={`page ${styles.scope}`}>
       <div className="page-head">
         <div>
           <div className="page-title">Profile</div>
@@ -85,4 +86,3 @@ export function ProfilePage() {
     </div>
   );
 }
-

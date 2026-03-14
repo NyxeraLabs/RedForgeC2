@@ -4,6 +4,7 @@ import logoUrl from "../assets/RedForgeC2-Logo-Transp.png";
 import { login } from "../lib/api";
 import { setApiBase, setToken } from "../lib/storage";
 import { useToasts } from "../components/ToastProvider";
+import styles from "./LoginPage.module.css";
 
 function defaultApiBaseFromLocation(): string {
   const protocol = window.location.protocol;
@@ -36,35 +37,42 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth">
-      <div className="auth-card">
-        <div className="auth-brand">
-          <img className="brand-logo" src={logoUrl} alt="RedForgeC2" />
+    <div className={styles.scope}>
+      <div className={styles.card}>
+        <div className={styles.brandRow}>
+          <img className={styles.logo} src={logoUrl} alt="RedForgeC2" />
           <div>
-            <div className="auth-title">RedForgeC2</div>
-            <div className="auth-sub">Operator Console</div>
+            <h1 className={styles.title}>RedForgeC2</h1>
+            <div className={styles.sub}>Operator Console</div>
           </div>
         </div>
 
-        <div className="auth-form">
-          <label>
+        <div className={styles.form}>
+          <label className={styles.fieldLabel}>
             Teamserver URL
-            <input value={apiBase} onChange={(e) => setApiBaseState(e.target.value)} placeholder="http://127.0.0.1:9080" />
+            <input
+              className={styles.input}
+              value={apiBase}
+              onChange={(e) => setApiBaseState(e.target.value)}
+              placeholder="http://127.0.0.1:9080"
+            />
           </label>
-          <label>
+          <label className={styles.fieldLabel}>
             Username
-            <input value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input className={styles.input} value={username} onChange={(e) => setUsername(e.target.value)} />
           </label>
-          <label>
+          <label className={styles.fieldLabel}>
             Password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
-          <button className="btn btn-primary" disabled={busy || !username || !password || !apiBase} onClick={onLogin}>
-            {busy ? "Authenticating..." : "Login"}
-          </button>
+          <div className={styles.actions}>
+            <button className={styles.primary} disabled={busy || !username || !password || !apiBase} onClick={onLogin}>
+              {busy ? "Authenticating..." : "Login"}
+            </button>
+          </div>
         </div>
 
-        <div className="auth-hint">Default admin credentials are controlled by server env vars.</div>
+        <div className={styles.hint}>Default admin credentials are controlled by server env vars.</div>
       </div>
     </div>
   );

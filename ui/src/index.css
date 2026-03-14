@@ -468,11 +468,25 @@ html, body {
 }
 
 .shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-weight: 900;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.85);
   margin-bottom: 8px;
+}
+
+.shell-logo {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(239, 68, 68, 0.30));
+}
+
+.shell-brand-text {
+  line-height: 1.1;
 }
 
 .shell-meta {
