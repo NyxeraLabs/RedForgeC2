@@ -80,8 +80,8 @@ Realtime: WebSockets
 - [x] Implement API routing
 
 ### QA
-- [ ] API unit tests
-- [ ] Config parsing tests
+- [x] API unit tests
+- [x] Config parsing tests
 
 ### Commits
 - [x] implement teamserver bootstrap
@@ -101,8 +101,8 @@ Realtime: WebSockets
 - [x] Implement RBAC
 
 ### QA
-- [ ] Auth bypass tests
-- [ ] Token validation tests
+- [x] Auth bypass tests
+- [x] Token validation tests
 
 ### Docs
 - [x] auth.md
@@ -112,7 +112,7 @@ Realtime: WebSockets
 - [x] add jwt authentication
 - [x] implement role system
 - [x] add middleware auth validation
-- [ ] add auth tests
+- [x] add auth tests
 
 ---
 
