@@ -47,4 +47,10 @@ RedForgeC2 uses a simple JWT-based authentication scheme for operator access and
 
 - `REDFORGE_JWT_SECRET`: secret used for signing and validating tokens.
 - `REDFORGE_TOKEN_EXPIRY_MIN`: JWT expiration in minutes (default: 60).
-- `REDFORGE_ADMIN_RESET`: if set to `1`, updates the admin password on startup.
+- `REDFORGE_ADMIN_RESET`: if set to `1`, updates the admin password on startup (dev only).
+
+## Hardening (defensive)
+
+- `REDFORGE_CORS_ORIGINS`: comma-separated allowlist for browser Origins (default allows local UI dev ports).
+- `REDFORGE_LOGIN_RPM`: per-IP rate limit for `/api/login` (default: 20/min).
+- `REDFORGE_MAX_BODY_BYTES`: max request body size enforced for non-GET endpoints (default: 25 MiB).

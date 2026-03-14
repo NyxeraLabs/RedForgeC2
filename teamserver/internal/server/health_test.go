@@ -26,9 +26,11 @@ func TestHealthz_OK(t *testing.T) {
 
 func TestWithCORS_Preflight(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "/anything", nil)
+	req.Header.Set("Origin", "http://localhost:5174")
 	w := httptest.NewRecorder()
 
-	h := withCORS(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	allowed := map[string]struct{}{"http://localhost:5174": {}}
+	h := withCORS(allowed, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("expected handler not to be called for OPTIONS preflight")
 	}))
 	h.ServeHTTP(w, req)
@@ -36,8 +38,7 @@ func TestWithCORS_Preflight(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
-	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Fatalf("expected ACAO %q, got %q", "*", got)
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5174" {
+		t.Fatalf("expected ACAO %q, got %q", "http://localhost:5174", got)
 	}
 }
-

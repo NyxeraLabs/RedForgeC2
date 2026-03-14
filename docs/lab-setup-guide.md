@@ -12,7 +12,9 @@ This guide describes setting up a local lab environment for RedForgeC2.
 From the repository root:
 
 ```sh
-docker compose -f docker/docker-compose.yml up --build
+cp .env.example .env
+# edit .env and set: REDFORGE_DB_PASS, REDFORGE_JWT_SECRET, REDFORGE_ADMIN_PASS
+make up
 ```
 
 This starts:
@@ -23,13 +25,18 @@ This starts:
 
 ## Custom Configuration
 
-Environment variables can be set in `docker/docker-compose.yml` or via an `.env` file.
+Environment variables are loaded from a repo-root `.env` file.
+
+Hardening-related environment variables (optional):
+- `REDFORGE_CORS_ORIGINS` (comma-separated allowlist)
+- `REDFORGE_LOGIN_RPM` (per-IP login requests/minute)
+- `REDFORGE_MAX_BODY_BYTES` (request body limit for non-GET endpoints)
 
 ## Resetting the Lab
 
 To rebuild and reset state:
 
 ```sh
-docker compose -f docker/docker-compose.yml down -v
-docker compose -f docker/docker-compose.yml up --build
+make db-reset
+make up
 ```

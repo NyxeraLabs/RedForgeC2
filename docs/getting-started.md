@@ -14,12 +14,22 @@ This document provides a quick overview for getting RedForgeC2 running locally.
 1. From the repo root:
 
 ```sh
-docker compose -f docker/docker-compose.yml up --build
+cp .env.example .env
+# edit .env and set: REDFORGE_DB_PASS, REDFORGE_JWT_SECRET, REDFORGE_ADMIN_PASS
+make up
 ```
 
 2. Open the UI at `http://localhost:5174`.
 
 3. The teamserver API is available at `http://localhost:9080`.
+
+### CORS (UI access)
+
+By default the teamserver only allows browser requests from common local UI origins:
+- `http://localhost:5174`
+- `http://localhost:5173`
+
+To override, set `REDFORGE_CORS_ORIGINS` (comma-separated) in `.env`.
 
 ## Running the teamserver locally
 
