@@ -55,6 +55,18 @@ export function MainLayout() {
             <NavLink to="/" end className={navClass}>
               Dashboard
             </NavLink>
+            <NavLink to="/telemetry" className={navClass}>
+              Telemetry
+            </NavLink>
+            <NavLink to="/map" className={navClass}>
+              Map
+            </NavLink>
+            <NavLink to="/reports" className={navClass}>
+              Reports
+            </NavLink>
+            <NavLink to="/settings" className={navClass}>
+              Settings
+            </NavLink>
             <NavLink to="/profile" className={navClass}>
               Profile
             </NavLink>
