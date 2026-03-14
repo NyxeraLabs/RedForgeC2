@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logoUrl from "../assets/redforgec2_logo.png";
+import logoUrl from "../assets/RedForgeC2-Logo-Transp.png";
 import { login } from "../lib/api";
 import { setApiBase, setToken } from "../lib/storage";
 import { useToasts } from "../components/ToastProvider";
