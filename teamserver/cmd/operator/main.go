@@ -165,7 +165,7 @@ func main() {
 
 func newLoginForm(app *tview.Application, pages *tview.Pages, serverURL string, token *string, onLogin func()) *tview.Form {
 	username := "admin"
-	password := "redforge-admin"
+	password := ""
 
 	form := tview.NewForm().
 		AddInputField("Username", username, 20, nil, func(text string) { username = text }).

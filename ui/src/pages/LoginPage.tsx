@@ -17,7 +17,7 @@ export function LoginPage() {
 
   const [apiBase, setApiBaseState] = useState(() => window.localStorage.getItem("redforge_api_base") || defaultApiBaseFromLocation());
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("redforge-admin");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onLogin() {

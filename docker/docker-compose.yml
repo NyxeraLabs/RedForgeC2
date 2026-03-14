@@ -4,9 +4,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: redforge
-      POSTGRES_PASSWORD: redforge
-      POSTGRES_DB: redforge
+      POSTGRES_USER: ${REDFORGE_DB_USER:-redforge}
+      POSTGRES_PASSWORD: ${REDFORGE_DB_PASS:?set REDFORGE_DB_PASS}
+      POSTGRES_DB: ${REDFORGE_DB_NAME:-redforge}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,15 +17,16 @@ services:
       context: ../teamserver
       dockerfile: ../docker/teamserver/Dockerfile
     environment:
-      REDFORGE_PORT: "9080"
-      DATABASE_URL: "postgres://redforge:redforge@postgres:5432/redforge?sslmode=disable"
-      REDFORGE_JWT_SECRET: "super-secret-key"
-      REDFORGE_ADMIN_USER: "admin"
-      REDFORGE_ADMIN_PASS: "redforge-admin"
+      REDFORGE_PORT: "${REDFORGE_PORT:-9080}"
+      REDFORGE_JWT_SECRET: ${REDFORGE_JWT_SECRET:?set REDFORGE_JWT_SECRET}
+      REDFORGE_ADMIN_USER: "${REDFORGE_ADMIN_USER:-admin}"
+      REDFORGE_ADMIN_PASS: ${REDFORGE_ADMIN_PASS:?set REDFORGE_ADMIN_PASS}
+      REDFORGE_TOKEN_EXPIRY_MIN: "${REDFORGE_TOKEN_EXPIRY_MIN:-60}"
+      DATABASE_URL: "postgres://${REDFORGE_DB_USER:-redforge}:${REDFORGE_DB_PASS:?set REDFORGE_DB_PASS}@postgres:5432/${REDFORGE_DB_NAME:-redforge}?sslmode=disable"
     depends_on:
       - postgres
     ports:
-      - "9080:9080"
+      - "${REDFORGE_PORT:-9080}:${REDFORGE_PORT:-9080}"
 
   ui:
     build:
@@ -34,7 +35,7 @@ services:
     ports:
       - "5174:5173"
     environment:
-      VITE_TEAMSERVER_URL: "http://teamserver:9080"
+      VITE_TEAMSERVER_URL: "http://teamserver:${REDFORGE_PORT:-9080}"
 
 volumes:
   postgres_data:
