@@ -92,3 +92,28 @@ func TestLoad_TokenExpiryParsing(t *testing.T) {
 		t.Fatalf("expected token expiry to remain default %d, got %d", 60, cfg.TokenExpiryMins)
 	}
 }
+
+func TestLoad_RequireTLS(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/redforge")
+	t.Setenv("REDFORGE_JWT_SECRET", "test-secret")
+	t.Setenv("REDFORGE_ADMIN_PASS", "test-admin-pass")
+
+	// Default should not require TLS.
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected config load to succeed, got: %v", err)
+	}
+	if cfg.RequireTLS {
+		t.Fatalf("expected RequireTLS to be false by default")
+	}
+
+	// Enable via environment variable.
+	t.Setenv("REDFORGE_REQUIRE_TLS", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("expected config load to succeed, got: %v", err)
+	}
+	if !cfg.RequireTLS {
+		t.Fatalf("expected RequireTLS to be true when environment variable is set")
+	}
+}

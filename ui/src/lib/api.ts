@@ -131,6 +131,11 @@ export type TaskResult = {
   timestamp: string;
 };
 
+export function wsBase(): string {
+  const base = apiBase();
+  return base.replace(/^http/, "ws");
+}
+
 export async function listResults(agentId: string): Promise<TaskResult[]> {
   const res = await request(`/api/operator/results?agent_id=${encodeURIComponent(agentId)}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
