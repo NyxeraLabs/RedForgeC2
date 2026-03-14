@@ -126,8 +126,8 @@ Realtime: WebSockets
 - [x] Implement metadata collection
 
 ### QA
-- [ ] OS compatibility tests
-- [ ] metadata validation tests
+- [x] OS compatibility tests
+- [x] metadata validation tests
 
 ### Docs
 - [x] agent-architecture.md

