@@ -1,0 +1,28 @@
+.scope :global(.page-head) {
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.10), rgba(0, 0, 0, 0));
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.scope :global(.page-title) {
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.scope :global(.panel) {
+  border-color: rgba(255, 0, 51, 0.18);
+  background: linear-gradient(180deg, rgba(16, 16, 18, 0.78), rgba(10, 10, 10, 0.62));
+}
+
+.scope :global(.panel-header) {
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.10), rgba(255, 255, 255, 0.02));
+}
+
+.scope :global(.table) th {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.scope :global(.btn-primary) {
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.95), rgba(200, 0, 40, 0.90));
+  border-color: rgba(255, 0, 51, 0.30);
+}
+

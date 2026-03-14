@@ -3,11 +3,13 @@ import { BrowserRouter, Link, Route, Routes, useNavigate } from "react-router-do
 import { ToastProvider } from "./components/ToastProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
+import { DemoPage } from "./pages/DemoPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { getMe } from "./lib/api";
 import { setToken } from "./lib/storage";
+import logoUrl from "./assets/RedForgeC2-Logo-Transp.png";
 
 function Shell() {
   const nav = useNavigate();
@@ -27,7 +29,10 @@ function Shell() {
   return (
     <div className="shell">
       <div className="shell-nav">
-        <div className="shell-brand">REDFORGE-C2</div>
+        <div className="shell-brand">
+          <img className="shell-logo" src={logoUrl} alt="RedForgeC2" />
+          <div className="shell-brand-text">REDFORGE-C2</div>
+        </div>
         {me ? <div className="shell-meta">{me.username} ({me.role})</div> : null}
         <Link className="shell-link" to="/">
           Dashboard
@@ -60,6 +65,7 @@ export default function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/demo" element={<DemoPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<Shell />} />
