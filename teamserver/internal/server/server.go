@@ -25,19 +25,9 @@ type Server struct {
 	logger   *log.Logger
 	registry *registry.Registry
 	users    *users.Store
-}
 
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	hardening   hardeningConfig
+	loginLimiter *ipRateLimiter
 }
 
 // New creates a new teamserver HTTP server.
@@ -49,13 +39,22 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 		logger.Printf("warning: failed to ensure admin user: %v", err)
 	}
 
-	server := &Server{config: cfg, mux: mux, logger: logger, registry: registry.New(pool), users: userStore}
+	hard := hardeningFromEnv()
+	server := &Server{
+		config:        cfg,
+		mux:           mux,
+		logger:        logger,
+		registry:      registry.New(pool),
+		users:         userStore,
+		hardening:     hard,
+		loginLimiter:  newIPRateLimiter(hard.loginRPM, time.Minute),
+	}
 
 	mux.HandleFunc("/healthz", server.handleHealth)
 	mux.HandleFunc("/api/register", server.handleRegister)
 	mux.HandleFunc("/api/heartbeat", server.handleHeartbeat)
 	mux.HandleFunc("/api/task/result", server.handleTaskResult)
-	mux.HandleFunc("/api/login", server.handleLogin)
+	mux.Handle("/api/login", withLoginRateLimit(server.loginLimiter, http.HandlerFunc(server.handleLogin)))
 	mux.Handle("/api/me", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMe)))
 	mux.Handle("/api/me/profile", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMeProfile)))
 	mux.Handle("/api/me/password", AuthMiddleware(cfg.JWTSecret, http.HandlerFunc(server.handleMePassword)))
@@ -75,9 +74,20 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 // Listen starts the HTTP server and blocks until stopped.
 func (s *Server) Listen(ctx context.Context) error {
 	addr := fmt.Sprintf(":%s", s.config.Port)
+	handler := http.Handler(s.mux)
+	handler = withBodyLimit(s.hardening.maxBodyBytes, handler)
+	handler = withCORS(s.hardening.allowedOrigins, handler)
+	handler = withSecurityHeaders(handler)
+	handler = withRequestID(handler)
+
 	httpServer := &http.Server{
-		Addr:    addr,
-		Handler: withCORS(s.mux),
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MiB
 	}
 
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {

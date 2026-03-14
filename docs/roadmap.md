@@ -213,20 +213,20 @@ Realtime: WebSockets
 ## Issue 9 — HTTPS Transport
 
 ### Dev
-- [x] implement https transport
+- [ ] implement https transport
 - [x] implement jitter timing
-- [x] implement retry logic
+- [ ] implement retry logic
 
 ### QA
-- [x] latency tests
-- [x] network failure tests
+- [ ] latency tests
+- [ ] network failure tests
 
 ### Commits
-- [x] implement https client
-- [x] add transport encryption
+- [ ] implement https client
+- [ ] add transport encryption
 - [x] implement jitter algorithm
-- [x] add retry backoff
-- [x] implement listener creation
+- [ ] add retry backoff
+- [ ] implement listener creation
 
 ---
 
@@ -234,18 +234,18 @@ Realtime: WebSockets
 
 ### Dev
 - [x] create transport interface
-- [x] implement tcp transport
-- [x] implement dns placeholder
+- [ ] implement tcp transport
+- [ ] implement dns placeholder
 
 ### QA
-- [x] failover tests
-- [x] transport switching tests
+- [ ] failover tests
+- [ ] transport switching tests
 
 ### Commits
 - [x] add transport interface
-- [x] implement tcp transport
-- [x] add dns transport skeleton
-- [x] implement transport registry
+- [ ] implement tcp transport
+- [ ] add dns transport skeleton
+- [ ] implement transport registry
 
 ---
 
@@ -338,8 +338,8 @@ Realtime: WebSockets
 ### Commits
 - [ ] implement loot storage
 - [ ] add loot search
-- [x] add loot tagging
-- [x] implement loot download
+- [ ] add loot tagging
+- [ ] implement loot download
 
 ---
 
