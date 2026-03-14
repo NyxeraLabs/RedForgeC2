@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ToastProvider } from "./components/ToastProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
-import { DemoApp } from "./demo/DemoApp";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TelemetryPage } from "./pages/TelemetryPage";
 import { MapPage } from "./pages/MapPage";
@@ -18,7 +17,6 @@ export default function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/demo/*" element={<DemoApp />} />
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<MainLayout />}>

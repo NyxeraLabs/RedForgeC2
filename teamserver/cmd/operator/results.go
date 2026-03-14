@@ -19,14 +19,21 @@ func showResultsDialog(app *tview.Application, pages *tview.Pages, serverURL, to
 
 	text := ""
 	for _, r := range results {
-		text += fmt.Sprintf("[%s] %s - %s\n", r.Timestamp.Format(time.RFC3339), r.TaskID, r.Status)
+		text += "[yellow]═══════════════════════════════════════[-]\n"
+		text += fmt.Sprintf("[cyan]Task:[-] %s\n", r.TaskID)
+		text += fmt.Sprintf("[cyan]Status:[-] [green]%s[-]\n", r.Status)
+		text += fmt.Sprintf("[cyan]Time:[-] %s\n", r.Timestamp.Format(time.RFC3339))
 		if r.Error != "" {
-			text += fmt.Sprintf("  ERR: %s\n", r.Error)
+			text += fmt.Sprintf("[red]Error:[-] %s\n", r.Error)
 		}
-		text += fmt.Sprintf("  %s\n\n", r.Output)
+		if r.Output != "" {
+			text += fmt.Sprintf("[green]Output:[-]\n%s\n", r.Output)
+		} else {
+			text += "[yellow](no output)[-]\n"
+		}
 	}
 	if text == "" {
-		text = "<no results>"
+		text = "[yellow]<no results>[-]"
 	}
 
 	view := tview.NewTextView().SetDynamicColors(true).SetText(text)
@@ -48,7 +55,7 @@ func showResultsDialog(app *tview.Application, pages *tview.Pages, serverURL, to
 func fetchResults(serverURL, token, agentID string) ([]taskResult, error) {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/api/operator/results?agent_id=%s", serverURL, agentID), nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := secureClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

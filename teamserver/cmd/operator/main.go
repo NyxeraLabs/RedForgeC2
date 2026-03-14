@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,7 +15,16 @@ import (
 	"github.com/rivo/tview"
 )
 
-const defaultServerURL = "http://localhost:9080"
+const defaultServerURL = "https://localhost:9080"
+
+// secureClient is an HTTP client configured to handle self-signed TLS certificates
+// commonly used in C2 development environments.
+var secureClient = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+	Timeout: 15 * time.Second,
+}
 
 type loginRequest struct {
 	Username string `json:"username"`
@@ -111,11 +121,33 @@ func main() {
 	}
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Handle ONLY keyboard shortcuts; let table navigation work normally
-		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab || event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown || event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyRight || event.Key() == tcell.KeyEnter {
+		// Let table/form navigation work normally
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab ||
+			event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown ||
+			event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyRight ||
+			event.Key() == tcell.KeyEnter {
 			return event
 		}
 
+		if event.Key() == tcell.KeyCtrlC {
+			app.Stop()
+			return nil
+		}
+
+		focus := app.GetFocus()
+		_, isInput := focus.(*tview.InputField)
+		_, isForm := focus.(*tview.Form)
+
+		// If in an input field or form, only handle Ctrl+C and Escape
+		if isInput || isForm {
+			if event.Key() == tcell.KeyEscape {
+				app.Stop()
+				return nil
+			}
+			return event
+		}
+
+		// Handle shortcuts only when not in input fields
 		switch event.Rune() {
 		case 'q', 'Q':
 			app.Stop()
@@ -366,7 +398,7 @@ func newTasksTable(app *tview.Application, pages *tview.Pages, serverURL string,
 func fetchTasks(serverURL, token string) ([]taskEntry, error) {
 	req, _ := http.NewRequest("GET", serverURL+"/api/operator/tasks", nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := secureClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +437,7 @@ func showModal(app *tview.Application, pages *tview.Pages, message string) {
 
 func doLogin(serverURL, username, password string) (string, error) {
 	body, _ := json.Marshal(loginRequest{Username: username, Password: password})
-	resp, err := http.Post(serverURL+"/api/login", "application/json", bytes.NewReader(body))
+	resp, err := secureClient.Post(serverURL+"/api/login", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -423,7 +455,7 @@ func doLogin(serverURL, username, password string) (string, error) {
 func fetchAgents(serverURL, token string) ([]agentEntry, error) {
 	req, _ := http.NewRequest("GET", serverURL+"/api/operator/agents", nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := secureClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +501,7 @@ func submitTask(serverURL, token string, task taskRequest) error {
 	req, _ := http.NewRequest("POST", serverURL+"/api/operator/task", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := secureClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -478,4 +510,22 @@ func submitTask(serverURL, token string, task taskRequest) error {
 		return fmt.Errorf("status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func fetchAgentResults(serverURL, token, agentID string) ([]taskResult, error) {
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/api/operator/results/%s", serverURL, agentID), nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	resp, err := secureClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	var results []taskResult
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, err
+	}
+	return results, nil
 }

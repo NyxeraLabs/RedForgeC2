@@ -22,10 +22,15 @@ services:
       REDFORGE_ADMIN_RESET: "${REDFORGE_ADMIN_RESET:-0}"
       REDFORGE_TOKEN_EXPIRY_MIN: "${REDFORGE_TOKEN_EXPIRY_MIN:-60}"
       DATABASE_URL: "postgres://${REDFORGE_DB_USER:-redforge}:${REDFORGE_DB_PASS:?set REDFORGE_DB_PASS}@postgres:5432/${REDFORGE_DB_NAME:-redforge}?sslmode=disable"
+      REDFORGE_TLS_CERT_FILE: "/certs/server.crt"
+      REDFORGE_TLS_KEY_FILE: "/certs/server.key"
+      REDFORGE_CORS_ORIGINS: "https://localhost:5174,https://localhost:5173,https://127.0.0.1:5174,https://127.0.0.1:5173"
     depends_on:
       - postgres
     ports:
       - "${REDFORGE_PORT:-9080}:${REDFORGE_PORT:-9080}"
+    volumes:
+      - ./docker/certs:/certs:ro
 
   ui:
     build:
@@ -34,12 +39,11 @@ services:
       args:
         VITE_BUILD_SHA: "${REDFORGE_BUILD_SHA:-dev}"
         VITE_BUILD_EPOCH: "${REDFORGE_BUILD_EPOCH:-0}"
+        VITE_TEAMSERVER_URL: "${REDFORGE_UI_TEAMSERVER_URL:-https://localhost:9080}"
     ports:
       - "5174:5173"
-    environment:
-      # UI runs inside Docker network; use the service name.
-      # For TLS, override this in your `.env` (e.g. `REDFORGE_UI_TEAMSERVER_URL=https://teamserver:9080`).
-      VITE_TEAMSERVER_URL: "${REDFORGE_UI_TEAMSERVER_URL:-http://teamserver:${REDFORGE_PORT:-9080}}"
+    volumes:
+      - ./docker/certs:/certs:ro
 
 volumes:
   postgres_data:

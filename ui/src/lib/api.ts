@@ -24,12 +24,19 @@ async function request(path: string, init: RequestInit = {}) {
   const token = getToken();
   if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${base}${path}`, { ...init, headers });
-  if (res.status === 401 || res.status === 403) {
-    setToken(null);
-    throw new AuthError();
+  try {
+    const res = await fetch(`${base}${path}`, { ...init, headers });
+    if (res.status === 401 || res.status === 403) {
+      setToken(null);
+      throw new AuthError();
+    }
+    return res;
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new Error(`Network error: check that the teamserver is running at ${base} and CORS is properly configured`);
+    }
+    throw err;
   }
-  return res;
 }
 
 export async function login(username: string, password: string): Promise<string> {
@@ -114,10 +121,10 @@ export async function listTasks(agentId?: string): Promise<TaskSummary[]> {
   return Array.isArray(raw) ? (raw as TaskSummary[]) : [];
 }
 
-export async function createTask(agentId: string, command: string, args: string[], timeoutSeconds: number) {
+export async function createTask(agentId: string, command: string, args: string[], timeoutSeconds: number, transport?: string) {
   const res = await request("/api/operator/task", {
     method: "POST",
-    body: JSON.stringify({ agent_id: agentId, command, args, timeout_seconds: timeoutSeconds }),
+    body: JSON.stringify({ agent_id: agentId, command, args, timeout_seconds: timeoutSeconds, transport }),
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 }
@@ -133,7 +140,7 @@ export type TaskResult = {
 
 export function wsBase(): string {
   const base = apiBase();
-  return base.replace(/^http/, "ws");
+  return base.replace(/^https?:\/\//, "wss://");
 }
 
 export async function listResults(agentId: string): Promise<TaskResult[]> {
@@ -165,4 +172,3 @@ export async function adminCreateUser(body: { username: string; password: string
     throw new Error(data?.error || `${res.status} ${res.statusText}`);
   }
 }
-

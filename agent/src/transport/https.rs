@@ -28,6 +28,11 @@ impl HttpsTransport {
     /// Constructs a new HTTPS transport using the provided agent configuration.
     pub fn new(cfg: &AgentConfig) -> anyhow::Result<Self> {
         let mut builder = Client::builder().timeout(Duration::from_secs(20));
+        
+        let mut base_url = cfg.server_url.clone();
+        if !base_url.to_lowercase().starts_with("https://") {
+            base_url = format!("https://{}", base_url.trim_start_matches("http://"));
+        }
 
         if let Some(ca_cert) = cfg.ca_cert_path.as_deref() {
             let cert = std::fs::read(ca_cert).context("reading CA certificate")?;
@@ -37,12 +42,13 @@ impl HttpsTransport {
 
         let client = builder
             .https_only(true)
+            .danger_accept_invalid_certs(true)
             .build()
             .context("building https client")?;
 
         Ok(Self {
             client,
-            base_url: cfg.server_url.clone(),
+            base_url,
             max_retries: cfg.transport_max_retries,
             initial_backoff: Duration::from_millis(cfg.transport_backoff_ms),
         })

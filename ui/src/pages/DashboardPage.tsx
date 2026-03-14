@@ -22,6 +22,7 @@ export function DashboardPage() {
   const [command, setCommand] = useState("ls");
   const [args, setArgs] = useState("");
   const [timeoutSec, setTimeoutSec] = useState(30);
+  const [transport, setTransport] = useState("https");
   const [results, setResults] = useState<TaskResult[]>([]);
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [status, setStatus] = useState<string>("idle");
@@ -112,7 +113,7 @@ export function DashboardPage() {
     setStatus("submitting task...");
     try {
       const argv = args.trim() === "" ? [] : args.split(" ");
-      await createTask(selectedAgent, command, argv, timeoutSec);
+      await createTask(selectedAgent, command, argv, timeoutSec, transport);
       setStatus("task submitted");
       toasts.push({ kind: "good", title: "Task queued", message: `${command} ${args}`.trim() });
       await refreshTasks();
@@ -215,6 +216,15 @@ export function DashboardPage() {
             <div className="form-row">
               <label>Timeout (sec)</label>
               <input type="number" value={timeoutSec} onChange={(e) => setTimeoutSec(Number(e.target.value))} />
+            </div>
+
+            <div className="form-row">
+              <label>Transport</label>
+              <select value={transport} onChange={(e) => setTransport(e.target.value)}>
+                <option value="https">HTTPS</option>
+                <option value="dns">DNS (Fallback)</option>
+                <option value="icmp">ICMP (Signaling)</option>
+              </select>
             </div>
 
             <div className="split">

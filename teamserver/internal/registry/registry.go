@@ -272,9 +272,12 @@ func (r *Registry) GetResults(agentID string) []api.TaskResult {
 		out := make([]api.TaskResult, 0)
 		for rows.Next() {
 			var r api.TaskResult
-			if err := rows.Scan(&r.TaskID, &r.Status, &r.Output, &r.Error, &r.Timestamp); err != nil {
+			var taskID string
+			if err := rows.Scan(&taskID, &r.Status, &r.Output, &r.Error, &r.Timestamp); err != nil {
 				continue
 			}
+			r.TaskID = taskID
+			r.AgentID = agentID
 			out = append(out, r)
 		}
 		return out

@@ -24,7 +24,7 @@ func hardeningFromEnv() hardeningConfig {
 	raw := strings.TrimSpace(os.Getenv("REDFORGE_CORS_ORIGINS"))
 	if raw == "" {
 		// Secure-by-default for local development: allow only common Vite ports.
-		raw = "http://localhost:5174,http://localhost:5173"
+		raw = "https://localhost:5174,https://localhost:5173"
 	}
 	for _, o := range strings.Split(raw, ",") {
 		o = strings.TrimSpace(o)
@@ -194,4 +194,3 @@ func constantTimeEq(a, b string) bool {
 	}
 	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
-

@@ -119,9 +119,15 @@ func (s *Server) Listen(ctx context.Context) error {
 	handler = withSecurityHeaders(handler)
 	handler = withRequestID(handler)
 
-	// Enforce TLS if explicitly configured.
-	if s.config.RequireTLS && (s.config.TLSCertFile == "" || s.config.TLSKeyFile == "") {
-		return fmt.Errorf("TLS is required (REDFORGE_REQUIRE_TLS=1) but TLS cert/key are not configured")
+	if s.config.TLSCertFile == "" || s.config.TLSKeyFile == "" {
+		return fmt.Errorf("TLS certificates missing: set REDFORGE_TLS_CERT and REDFORGE_TLS_KEY")
+	}
+
+	if _, err := os.Stat(s.config.TLSCertFile); err != nil {
+		return fmt.Errorf("TLS cert file missing: %s", s.config.TLSCertFile)
+	}
+	if _, err := os.Stat(s.config.TLSKeyFile); err != nil {
+		return fmt.Errorf("TLS key file missing: %s", s.config.TLSKeyFile)
 	}
 
 	httpServer := &http.Server{
@@ -134,11 +140,7 @@ func (s *Server) Listen(ctx context.Context) error {
 		MaxHeaderBytes:    1 << 20, // 1 MiB
 	}
 
-	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
-		s.logger.Printf("teamserver listening on https://0.0.0.0%s", addr)
-	} else {
-		s.logger.Printf("teamserver listening on http://0.0.0.0%s", addr)
-	}
+	s.logger.Printf("teamserver listening on https://0.0.0.0%s", addr)
 
 	go func() {
 		<-ctx.Done()
@@ -147,10 +149,7 @@ func (s *Server) Listen(ctx context.Context) error {
 		_ = httpServer.Shutdown(ctxShutdown)
 	}()
 
-	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
-		return httpServer.ListenAndServeTLS(s.config.TLSCertFile, s.config.TLSKeyFile)
-	}
-	return httpServer.ListenAndServe()
+	return httpServer.ListenAndServeTLS(s.config.TLSCertFile, s.config.TLSKeyFile)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -222,10 +221,11 @@ func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		AgentID       string   `json:"agent_id"`
-		Command       string   `json:"command"`
-		Args          []string `json:"args"`
-		TimeoutSecond int      `json:"timeout_seconds"`
+		AgentID        string   `json:"agent_id"`
+		Command        string   `json:"command"`
+		Args           []string `json:"args"`
+		TimeoutSeconds int      `json:"timeout_seconds"`
+		Transport      string   `json:"transport"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -236,7 +236,7 @@ func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
 		TaskID:  uuid.NewString(),
 		Command: req.Command,
 		Args:    req.Args,
-		Timeout: req.TimeoutSecond,
+		Timeout: req.TimeoutSeconds,
 	}
 	s.registry.AddTask(req.AgentID, task)
 

@@ -12,7 +12,7 @@ Operators authenticate using username/password and receive a JWT token.
 Example request:
 
 ```sh
-curl -X POST http://localhost:9080/api/login \
+curl -k -X POST https://localhost:9080/api/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"<admin-password>"}'
 ```

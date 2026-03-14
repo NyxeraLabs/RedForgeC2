@@ -58,7 +58,18 @@ pub async fn run() -> anyhow::Result<()> {
     info!("agent configuration: {:#?}", cfg);
 
     let mut state = match AgentState::load() {
-        Some(s) => s,
+        Some(s) => {
+            // If we have a saved state but no token, it's likely invalid - force re-registration
+            if s.token.is_none() {
+                info!("saved state found but no token - clearing for re-registration");
+                AgentState {
+                    agent_id: s.agent_id.clone(),
+                    token: None,
+                }
+            } else {
+                s
+            }
+        }
         None => AgentState {
             agent_id: uuid::Uuid::new_v4().to_string(),
             token: None,
@@ -81,9 +92,9 @@ pub async fn run() -> anyhow::Result<()> {
         if let Some(token) = body.get("token").and_then(|v| v.as_str()) {
             state.token = Some(zeroize::Zeroizing::new(token.to_string()));
             state.save()?;
-            info!("received agent token");
+            info!("received agent token: {}", token);
         } else {
-            return Err(anyhow::anyhow!("register response missing token"));
+            return Err(anyhow::anyhow!("register response missing token: {:?}", body));
         }
     }
 
@@ -192,7 +203,6 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                     Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
                 },
                 Err(e) => {
-                    let e: base64::DecodeError = e;
                     build_result("error", "".to_string(), Some(e.to_string()))
                 }
             }
@@ -316,7 +326,7 @@ async fn submit_task_result(
     _cfg: &AgentConfig,
     result: &TaskResult,
 ) -> anyhow::Result<()> {
-    let _res = transport
+    let _ = transport
         .post_json("/api/task/result", result)
         .await
         .context("submit task result")?;
