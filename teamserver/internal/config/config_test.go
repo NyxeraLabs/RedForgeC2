@@ -27,7 +27,7 @@ func TestLoad_Defaults(t *testing.T) {
 	t.Setenv("REDFORGE_JWT_SECRET", "test-secret")
 	t.Setenv("REDFORGE_PORT", "")
 	t.Setenv("REDFORGE_ADMIN_USER", "")
-	t.Setenv("REDFORGE_ADMIN_PASS", "")
+	t.Setenv("REDFORGE_ADMIN_PASS", "test-admin-pass")
 	t.Setenv("REDFORGE_TOKEN_EXPIRY_MIN", "")
 	t.Setenv("REDFORGE_TLS_CERT_FILE", "")
 	t.Setenv("REDFORGE_TLS_KEY_FILE", "")
@@ -43,8 +43,8 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.AdminUsername != "admin" {
 		t.Fatalf("expected default admin username %q, got %q", "admin", cfg.AdminUsername)
 	}
-	if cfg.AdminPassword != "redforge-admin" {
-		t.Fatalf("expected default admin password %q, got %q", "redforge-admin", cfg.AdminPassword)
+	if cfg.AdminPassword != "test-admin-pass" {
+		t.Fatalf("expected admin password %q, got %q", "test-admin-pass", cfg.AdminPassword)
 	}
 	if cfg.TokenExpiryMins != 60 {
 		t.Fatalf("expected default token expiry %d, got %d", 60, cfg.TokenExpiryMins)
@@ -54,6 +54,7 @@ func TestLoad_Defaults(t *testing.T) {
 func TestLoad_TokenExpiryParsing(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/redforge")
 	t.Setenv("REDFORGE_JWT_SECRET", "test-secret")
+	t.Setenv("REDFORGE_ADMIN_PASS", "test-admin-pass")
 
 	t.Setenv("REDFORGE_TOKEN_EXPIRY_MIN", "15")
 	cfg, err := Load()
@@ -91,4 +92,3 @@ func TestLoad_TokenExpiryParsing(t *testing.T) {
 		t.Fatalf("expected token expiry to remain default %d, got %d", 60, cfg.TokenExpiryMins)
 	}
 }
-

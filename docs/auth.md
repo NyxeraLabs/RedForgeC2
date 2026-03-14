@@ -12,7 +12,7 @@ RedForgeC2 uses a simple JWT-based authentication scheme for operator access and
 2. Server validates credentials against the `users` table (Postgres).
    - On startup, the teamserver ensures an admin user exists from:
      - `REDFORGE_ADMIN_USER` (default: `admin`)
-     - `REDFORGE_ADMIN_PASS` (default: `redforge-admin`)
+    - `REDFORGE_ADMIN_PASS` (no default; required)
    - Passwords are stored using bcrypt hashes (never plaintext).
 
 3. On success, the server returns a signed JWT:
