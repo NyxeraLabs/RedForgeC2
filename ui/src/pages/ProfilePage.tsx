@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { changePassword, getMe, updateProfile } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
-import styles from "./ProfilePage.module.css";
+import styles from "../styles/NonOpScope.module.css";
 
 export function ProfilePage() {
   const toasts = useToasts();

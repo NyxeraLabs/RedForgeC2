@@ -17,6 +17,16 @@
   background: linear-gradient(180deg, rgba(255, 0, 51, 0.10), rgba(255, 255, 255, 0.02));
 }
 
+.scope :global(.form-row) label {
+  color: rgba(235, 235, 245, 0.78);
+  font-size: 0.85rem;
+}
+
+.scope :global(input),
+.scope :global(select) {
+  border-radius: 12px;
+}
+
 .scope :global(.table) th {
   color: rgba(255, 255, 255, 0.85);
 }

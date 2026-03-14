@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { adminCreateUser, adminListUsers, AdminUser } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
-import styles from "./AdminUsersPage.module.css";
+import styles from "../styles/NonOpScope.module.css";
 
 export function AdminUsersPage() {
   const toasts = useToasts();
