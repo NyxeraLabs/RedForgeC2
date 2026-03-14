@@ -31,10 +31,15 @@ services:
     build:
       context: .
       dockerfile: ./docker/ui/Dockerfile
+      args:
+        VITE_BUILD_SHA: "${REDFORGE_BUILD_SHA:-dev}"
+        VITE_BUILD_EPOCH: "${REDFORGE_BUILD_EPOCH:-0}"
     ports:
       - "5174:5173"
     environment:
-      VITE_TEAMSERVER_URL: "http://teamserver:${REDFORGE_PORT:-9080}"
+      # UI runs inside Docker network; use the service name.
+      # For TLS, override this in your `.env` (e.g. `REDFORGE_UI_TEAMSERVER_URL=https://teamserver:9080`).
+      VITE_TEAMSERVER_URL: "${REDFORGE_UI_TEAMSERVER_URL:-http://teamserver:${REDFORGE_PORT:-9080}}"
 
 volumes:
   postgres_data:

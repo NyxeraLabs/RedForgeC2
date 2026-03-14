@@ -4,6 +4,7 @@ import logoUrl from "../assets/RedForgeC2-Logo-Transp.png";
 import { login } from "../lib/api";
 import { setApiBase, setToken } from "../lib/storage";
 import { useToasts } from "../components/ToastProvider";
+import { BuildStamp } from "../components/BuildStamp";
 import styles from "./LoginPage.module.css";
 
 function defaultApiBaseFromLocation(): string {
@@ -72,7 +73,9 @@ export function LoginPage() {
           </div>
         </div>
 
-        <div className={styles.hint}>Default admin credentials are controlled by server env vars.</div>
+        <div className={styles.hint}>
+          Default admin credentials are controlled by server env vars. <BuildStamp className={styles.buildStamp} />
+        </div>
       </div>
     </div>
   );

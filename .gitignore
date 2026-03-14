@@ -16,6 +16,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+docker/certs/
 *.pem
 *.key
 *.pfx
@@ -34,6 +35,7 @@ target/
 
 # Go
 bin/
+teamserver/redforge-operator
 *.exe
 *.test
 *.out

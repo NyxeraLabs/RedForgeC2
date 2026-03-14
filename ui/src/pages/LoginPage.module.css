@@ -38,8 +38,8 @@
 }
 
 .logo {
-  width: 124px;
-  height: 124px;
+  width: 192px;
+  height: 192px;
   object-fit: contain;
   filter: drop-shadow(0 0 18px rgba(255, 0, 51, 0.30));
 }
@@ -118,4 +118,10 @@
   color: rgba(235, 235, 245, 0.55);
   font-size: 0.85rem;
   line-height: 1.35;
+}
+
+.buildStamp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: rgba(235, 235, 245, 0.68);
+  margin-left: 10px;
 }
