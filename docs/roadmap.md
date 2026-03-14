@@ -488,3 +488,117 @@ Realtime: WebSockets
 ### Commits
 - [ ] add pivoting task handlers
 - [ ] add UI pivot configuration controls
+
+# Appendix A: Military-Grade Security Hardening & Infrastructure Resilience
+### Phase 4: NyxeraLabs Sovereign Infrastructure Protection
+
+## Milestone 19 — Cryptographic Rigor & Protocol Supremacy
+*Eradicating legacy cryptography and transitioning to Quantum-Resistant, Authenticated Encryption with Associated Data (AEAD) to ensure absolute forward secrecy and payload integrity.*
+
+- [ ] **19.1 Post-Quantum & AEAD Cryptography**
+  - [ ] Deprecate AES-256-CBC in favor of `XChaCha20-Poly1305` or `AES-256-GCM` for all Agent ↔ Teamserver and Client ↔ Teamserver data layers.
+  - [ ] Implement Elliptic-Curve Diffie-Hellman (`X25519`) for ephemeral session key exchange to guarantee Perfect Forward Secrecy (PFS).
+  - [ ] Integrate optional Kyber (NIST PQC) key encapsulation mechanisms for post-quantum forward secrecy on Tier-1 (Rust) agents targeting highly classified networks.
+- [ ] **19.2 Hardware Security Module (HSM) Integration**
+  - [ ] Implement PKCS#11 support within the Go Teamserver to offload Root CA and private key storage to an HSM (e.g., YubiHSM 2 or AWS CloudHSM).
+  - [ ] Ensure the Teamserver *never* holds the private signing keys in memory; all JWT signing and mTLS certificate issuance must occur within the HSM boundary.
+- [ ] **19.3 Cryptographic Task Watermarking & Non-Repudiation**
+  - [ ] Require the Operator Client to cryptographically sign every task request (e.g., via Ed25519 operator-specific keys).
+  -[ ] Implement signature verification at both the Teamserver (for RBAC authorization) and the Agent (for execution authorization), ensuring a compromised Teamserver cannot issue arbitrary commands to agents.
+
+## Milestone 20 — Zero-Trust Operator Infrastructure
+*Enforcing biometric, phishing-resistant authentication and strict network isolation for NyxeraLabs operators accessing the C2.*
+
+- [ ] **20.1 Phishing-Resistant MFA (FIDO2/WebAuthn)**
+  -[ ] Eradicate password-only logins. Enforce hardware-backed FIDO2 security keys (YubiKey) for all Operator UI (Web/TUI) access.
+  - [ ] Implement short-lived, biometrically gated session tokens using Time-to-Live (TTL) micro-sessions (max 15 minutes of idle time before re-authentication).
+- [ ] **20.2 Bastion Hosts & Network Segmentation**
+  - [ ] Restrict Operator Client ↔ Teamserver gRPC communication exclusively through a WireGuard or Nebula encrypted overlay network.
+  - [ ] Drop all external ingress traffic to the Teamserver management ports. Only authenticated IPsec/WireGuard tunnels from designated jump boxes are permitted.
+- [ ] **20.3 Strict Role-Based Access Control (RBAC) & Four-Eyes Principle**
+  - [ ] Implement "Four-Eyes" execution authorization for critical tasks (e.g., `Domain Admin` escalation, widespread ransomware simulation). Operator A tasks; Admin B must approve via cryptographic signature.
+
+## Milestone 21 — Ephemeral & Untraceable Teamserver Footprint
+*Hardening the Teamserver host OS to resist physical and forensic analysis. The C2 must operate as a "Ghost Server" that self-destructs upon tampering.*
+
+- [ ] **21.1 RAM-Only Execution & Anti-Swapping**
+  - [ ] Deploy the Teamserver operating system and binaries strictly via stateless Live CD/PXE boot mechanisms into a `tmpfs` (RAM disk).
+  - [ ] Enforce `mlockall()` / `mlock()` in the Go Teamserver to pin all cryptographic keys and sensitive variables in memory, preventing them from being paged to disk/swap.
+- [ ] **21.2 Database Field-Level Encryption & LUKS**
+  - [ ] Implement AES-GCM Field-Level Encryption (FLE) within PostgreSQL for all captured loot, keystrokes, and task outputs before they are written to the database.
+  - [ ] Mandate LUKS2 Full Disk Encryption for any persistent storage volumes, utilizing Tang network-bound disk encryption (NBDE) to prevent decryption if the server is physically seized and isolated.
+- [ ] **21.3 Dead Man's Switch & Self-Destruct Sequence**
+  - [ ] Implement an eBPF-based tamper detection module tracking unauthorized SSH attempts, physical chassis intrusion, or unexpected network isolation.
+  - [ ] Develop a "Scorched Earth" subroutine: upon tamper threshold violation, instantly execute `WipeFile()` on database volumes, overwrite memory with `/dev/urandom`, and trigger an immediate kernel panic (`sysrq-trigger`).
+
+## Milestone 22 — Advanced Redirector & Traffic Laundering
+*Isolating the Teamserver from the target network via a distributed, highly expendable, and intelligent redirection tier.*
+
+- [ ] **22.1 JA3/JA4 Fingerprint Filtering & Active Defense**
+  - [ ] Deploy Nginx/HAProxy edge redirectors equipped with eBPF/Lua modules to inspect incoming TLS ClientHello packets (JA3/JA4 signatures).
+  - [ ] Automatically drop or tarpit connections matching known Blue Team scanners (e.g., Shodan, Censys, Palo Alto Cortex, CrowdStrike) or Python/Go default HTTP libraries.
+- [ ] **22.2 Dynamic Traffic Routing & Payload Proxying**
+  - [ ] Implement Domain Fronting and CDN pivoting (via Cloudflare, Fastly, CloudFront) to mask the true IP of the edge redirectors.
+  - [ ] Configure edge redirectors to perform SNI routing: valid agent traffic (verified via custom headers or TLS SNI) is proxied via reverse SSH tunnels back to the Teamserver. Invalid traffic is seamlessly redirected to a benign corporate webpage (e.g., `https://www.microsoft.com`).
+- [ ] **22.3 Fast-Flux Infrastructure Rotation**
+  - [ ] Develop a Terraform/Pulumi automation pipeline integrated into the Teamserver to spin up, rotate, and burn redirector VPS instances (DigitalOcean, Linode, AWS) every 4–8 hours automatically to burn threat intel IoCs (Indicators of Compromise).
+
+# Appendix B: Direct Competitor Supremacy & Extensibility
+### Phase 5: Advanced Extensibility & Modern Perimeter Domination
+
+## Milestone 23 — The "Anvil" Engine (In-Memory Object Execution)
+*To compete with Cobalt Strike's BOF and Havoc's module loading, the Rust Tier-1 Agent must be able to execute unlinked C/C++ object files and .NET assemblies entirely in memory, without spawning child processes.*
+
+- [ ] **23.1 COFF / ELF Object Loader (BOF Compatibility)**
+  - [ ] Implement a custom Common Object File Format (COFF) and Executable and Linkable Format (ELF) loader within the Rust agent to map, relocate, and execute C/C++ object files directly in the agent's memory space.
+  - [ ] Develop a compatibility layer wrapper to natively support existing Cobalt Strike BOFs and TrustedSec's SA (Situation Awareness) tools without requiring recompilation.
+  - [ ] Ensure all object file memory allocations are routed through the Milestone 15 Indirect Syscall engine to bypass user-land API hooks.
+- [ ] **23.2 Inline .NET Assembly Execution (Windows)**
+  - [ ] Implement a CLR (Common Language Runtime) hosting interface via COM (Component Object Model) to load and execute C# binaries (`.exe`/`.dll`) entirely in memory (e.g., BloodHound, Seatbelt, Rubeus).
+  - [ ] Develop an AMSI/ETW-TI bypass that dynamically patches the local CLR instance immediately before assembly invocation, restoring original bytes post-execution to avoid memory scanning alerts.
+- [ ] **23.3 Reflective DLL Injection & Shellcode Orchestration**
+  - [ ] Implement an sRDI (Shellcode Reflective DLL Injection) module to seamlessly convert arbitrary native DLLs into position-independent shellcode for thread-hijack execution.
+
+## Milestone 24 — Cloud Native & Identity Graph Operations
+*Modern breaches rarely rely solely on Active Directory; they target Entra ID (Azure AD), AWS IAM, and Okta. RedForgeC2 must treat Cloud C2 as a first-class citizen.*
+
+- [ ] **24.1 Primary Refresh Token (PRT) Extraction & Forgery**
+  - [ ] Develop native Rust modules to interface with the Windows CloudAP plugin and TPM (Trusted Platform Module) to extract or request Entra ID PRTs for seamless Azure lateral movement.
+  - [ ] Implement a local proxy within the Agent to tunnel operator browser traffic directly through the victim's authenticated PRT session, bypassing conditional access policies (Device Compliance/IP fencing).
+- [ ] **24.2 Cloud Metadata API Pivoting**
+  - [ ] Equip Tier-3 (Go) infrastructure agents with automated AWS IMDSv2, Azure IMDS, and GCP metadata extraction modules.
+  - [ ] Implement automated STS (Security Token Service) assumption and temporary credential generation for immediate cloud control plane escalation.
+- [ ] **24.3 OAuth & Device Code Phishing Workflows**
+  - [ ] Integrate a Teamserver module to generate, track, and weaponize Microsoft/Google Device Code authentication flows, pushing the authentication prompts directly to the Operator UI.
+
+## Milestone 25 — macOS / Apple Silicon Supremacy
+*Sliver is currently the standard for macOS C2. We must dethrone it by building a Tier-1 implant explicitly designed for Apple Silicon (ARM64) and modern macOS (Sonoma/Sequoia) security frameworks.*
+
+- [ ] **25.1 Mach-O & Swift Native Implant**
+  - [ ] Develop a dedicated macOS implant written in Swift/Objective-C to interface natively with Apple's private APIs, bypassing the heavy signature footprint of cross-compiled Go/Rust binaries.
+  - [ ] Implement Mach-O memory execution techniques to reflectively load dylibs (Dynamic Libraries) without touching the APFS filesystem.
+- [ ] **25.2 Endpoint Security Framework (ESF) Evasion**
+  -[ ] Develop memory-safe techniques to unhook or blind ESF sensors (e.g., Jamf Protect, CrowdStrike Falcon on Mac).
+  - [ ] Implement TCC (Transparency, Consent, and Control) database manipulation and zero-click bypasses to grant the agent Full Disk Access and Screen Recording permissions without user prompts.
+- [ ] **25.3 Keychain & Secure Enclave Subversion**
+  - [ ] Implement native API calls (`SecItemCopyMatching`) to dump cleartext passwords, cryptographic keys, and Safari cookies directly from the macOS Keychain.
+
+## Milestone 26 — The "ForgeScript" Ecosystem (API & Armory)
+*A C2 lives and dies by its community and extensibility. We must provide a decentralized package manager and a robust scripting API for operators.*
+
+- [ ] **26.1 Operator Scripting Engine (Python/Lua via gRPC)**
+  - [ ] Expose a 100% coverage gRPC API for the Teamserver, allowing operators to write headless Python or Lua scripts to automate tasks (e.g., "If new agent checks in as SYSTEM, auto-execute BOF Seatbelt and dump LSASS").
+  - [ ] Implement Webhook and Slack/Discord/Mattermost native integrations for automated alerting on high-value check-ins or lateral movement successes.
+- [ ] **26.2 Decentralized "Forge Armory" Package Manager**
+  - [ ] Build an in-UI module repository (like Sliver's Armory) that securely pulls vetted Red Team tools, BOFs, and custom lateral movement modules from a NyxeraLabs-signed GitHub repository.
+  - [ ] Implement automatic server-side compilation of these tools via the Milestone 14 "Forge" engine, ensuring payloads are obfuscated specifically for the current engagement before deployment.
+
+## Milestone 27 — Sub-System & Kernel Domination
+*To truly outmaneuver modern XDR platforms, RedForgeC2 must push operations below Ring 3 (Userland).*
+
+- [ ] **27.1 BYOVD (Bring Your Own Vulnerable Driver) Automation**
+  - [ ] Integrate a database of signed, vulnerable Windows drivers (e.g., `RTCore64.sys`, `gdrv.sys`).
+  - [ ] Develop an automated agent task to drop a vulnerable driver, exploit it to gain Ring 0 execution, and forcibly remove EDR kernel callbacks (`PspCreateProcessNotifyRoutine`, `ObRegisterCallbacks`) to effectively blind the EDR system-wide.
+- [ ] **27.2 Linux eBPF Rootkit Capabilities**
+  - [ ] For Linux Tier-1 agents, implement an eBPF (Extended Berkeley Packet Filter) module to intercept syscalls at the kernel level.
+  - [ ] Use eBPF to hide the agent's PID from `ps`/`top`, hide network sockets from `netstat`/`ss`, and intercept/modify SSH credentials in memory during authentication without patching `sshd`.
