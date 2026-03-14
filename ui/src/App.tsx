@@ -5,6 +5,10 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { DemoApp } from "./demo/DemoApp";
 import { DashboardPage } from "./pages/DashboardPage";
+import { TelemetryPage } from "./pages/TelemetryPage";
+import { MapPage } from "./pages/MapPage";
+import { ReportsPage } from "./pages/ReportsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { MainLayout } from "./layouts/MainLayout";
@@ -19,6 +23,10 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<MainLayout />}>
               <Route index element={<DashboardPage />} />
+              <Route path="telemetry" element={<TelemetryPage />} />
+              <Route path="map" element={<MapPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="admin/users" element={<AdminUsersPage />} />
             </Route>
