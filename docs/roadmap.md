@@ -213,19 +213,19 @@ Realtime: WebSockets
 ## Issue 9 — HTTPS Transport
 
 ### Dev
-- [ ] implement https transport
+- [x] implement https transport
 - [x] implement jitter timing
-- [ ] implement retry logic
+- [x] implement retry logic
 
 ### QA
 - [ ] latency tests
 - [ ] network failure tests
 
 ### Commits
-- [ ] implement https client
-- [ ] add transport encryption
+- [x] implement https client
+- [x] add transport encryption
 - [x] implement jitter algorithm
-- [ ] add retry backoff
+- [x] add retry backoff
 - [ ] implement listener creation
 
 ---
@@ -234,8 +234,8 @@ Realtime: WebSockets
 
 ### Dev
 - [x] create transport interface
-- [ ] implement tcp transport
-- [ ] implement dns placeholder
+- [x] implement tcp transport
+- [x] implement dns placeholder
 
 ### QA
 - [ ] failover tests
@@ -243,9 +243,18 @@ Realtime: WebSockets
 
 ### Commits
 - [x] add transport interface
-- [ ] implement tcp transport
-- [ ] add dns transport skeleton
+- [x] implement tcp transport
+- [x] add dns transport skeleton
 - [ ] implement transport registry
+
+---
+
+## Branch summary (this feature)
+- Added transport health telemetry reporting (retries/backoff/errors) to heartbeats.
+- Implemented retry/backoff logic in agent HTTPS transport.
+- Added in-memory transport health tracking in teamserver registry.
+- Added UI dashboard columns showing transport failures + last error.
+- Added TUI support for server URL updates + health display.
 
 ---
 
