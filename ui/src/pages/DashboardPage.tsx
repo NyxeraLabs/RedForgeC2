@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Agent, apiBase, createTask, getMe, listAgents, listResults, listTasks, TaskResult, TaskSummary } from "../lib/api";
+import { Agent, apiBase, createTask, getMe, listAgents, listResults, listTasks, TaskResult, TaskSummary, wsBase } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
 
 function ageSeconds(iso: string): number {
@@ -74,8 +74,27 @@ export function DashboardPage() {
       .then((m) => setRole(m.role))
       .catch(() => setRole(null));
     refreshAgents(true);
+
     const id = window.setInterval(() => refreshAgents(true), 5000);
-    return () => window.clearInterval(id);
+
+    // Real-time websocket updates (fallbacks to polling)
+    const ws = new WebSocket(`${wsBase()}/api/ws`);
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as { type: string; agents?: Agent[]; tasks?: TaskSummary[] };
+        if (msg.type === "state") {
+          if (msg.agents) setAgents(msg.agents);
+          if (msg.tasks) setTasks(msg.tasks);
+        }
+      } catch {
+        // ignore bad payloads
+      }
+    };
+
+    return () => {
+      window.clearInterval(id);
+      ws.close();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
