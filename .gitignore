@@ -22,6 +22,8 @@ docker/certs/
 *.pfx
 *.p12
 secrets/
+agent/.redforge_state.json
+.redforge_state.json
 
 # Logs & databases
 *.log
