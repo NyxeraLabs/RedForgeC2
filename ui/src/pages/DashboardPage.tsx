@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Agent, apiBase, createTask, getMe, listAgents, listResults, listTasks, TaskResult, TaskSummary, wsBase } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
+import { getToken } from "../lib/storage";
 
 function ageSeconds(iso: string): number {
   const t = new Date(iso).getTime();
@@ -76,10 +77,16 @@ export function DashboardPage() {
       .catch(() => setRole(null));
     refreshAgents(true);
 
-    const id = window.setInterval(() => refreshAgents(true), 5000);
+    const id = window.setInterval(() => {
+      refreshAgents(true);
+      refreshTasks();
+      refreshResults();
+    }, 5000);
 
     // Real-time websocket updates (fallbacks to polling)
-    const ws = new WebSocket(`${wsBase()}/api/ws`);
+    const token = getToken();
+    const wsUrl = token ? `${wsBase()}/api/ws?token=${encodeURIComponent(token)}` : `${wsBase()}/api/ws`;
+    const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data) as { type: string; agents?: Agent[]; tasks?: TaskSummary[] };

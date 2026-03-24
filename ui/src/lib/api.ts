@@ -1,13 +1,13 @@
 import { getApiBase, getToken, setToken } from "./storage";
 
 function defaultApiBaseFromLocation(): string {
-  const protocol = window.location.protocol;
   const hostname = window.location.hostname;
-  return `${protocol}//${hostname}:9080`;
+  return `https://${hostname}:9080`;
 }
 
 export function apiBase(): string {
-  return import.meta.env.VITE_TEAMSERVER_URL || getApiBase() || defaultApiBaseFromLocation();
+  // Allow runtime overrides (login page Teamserver URL) to win over build-time defaults.
+  return getApiBase() || import.meta.env.VITE_TEAMSERVER_URL || defaultApiBaseFromLocation();
 }
 
 export class AuthError extends Error {
@@ -33,7 +33,9 @@ async function request(path: string, init: RequestInit = {}) {
     return res;
   } catch (err) {
     if (err instanceof TypeError) {
-      throw new Error(`Network error: check that the teamserver is running at ${base} and CORS is properly configured`);
+      throw new Error(
+        `Network error: check that the teamserver is reachable at ${base} and CORS is configured for your UI origin. If ${base} uses a self-signed TLS cert, open ${base}/healthz in your browser and accept/trust the certificate.`,
+      );
     }
     throw err;
   }
@@ -140,7 +142,7 @@ export type TaskResult = {
 
 export function wsBase(): string {
   const base = apiBase();
-  return base.replace(/^https?:\/\//, "wss://");
+  return base.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
 }
 
 export async function listResults(agentId: string): Promise<TaskResult[]> {

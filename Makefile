@@ -6,7 +6,7 @@ COMPOSE := REDFORGE_BUILD_SHA=$(REDFORGE_BUILD_SHA) REDFORGE_BUILD_EPOCH=$(REDFO
 
 .PHONY: up down ps logs build db-reset clean
 .PHONY: env-init env-check
-.PHONY: teamserver agent ui tui e2e
+.PHONY: teamserver agent ui e2e
 
 env-init:
 	@if [ ! -f $(CURDIR)/.env ]; then \
@@ -61,9 +61,6 @@ agent:
 
 ui:
 	cd ui && npm install && npm run dev
-
-tui:
-	cd agent && cargo run --bin tui
 
 e2e:
 	./tests/e2e/run.sh

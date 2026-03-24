@@ -14,9 +14,12 @@ pub struct TcpTransport {
 impl TcpTransport {
     /// Connects to the given address (e.g. "example.com:1234").
     pub fn connect<A: ToSocketAddrs>(addr: A, timeout: Duration) -> std::io::Result<Self> {
-        let stream = TcpStream::connect_timeout(&addr.to_socket_addrs()?.next().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid socket address")
-        })?, timeout)?;
+        let stream = TcpStream::connect_timeout(
+            &addr.to_socket_addrs()?.next().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid socket address")
+            })?,
+            timeout,
+        )?;
         stream.set_read_timeout(Some(timeout))?;
         stream.set_write_timeout(Some(timeout))?;
         Ok(Self { stream })

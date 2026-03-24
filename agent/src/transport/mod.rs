@@ -9,6 +9,6 @@ pub trait Transport {
     fn close(&mut self) -> std::io::Result<()>;
 }
 
+pub mod dns;
 pub mod https;
 pub mod tcp;
-pub mod dns;

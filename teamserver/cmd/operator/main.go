@@ -83,6 +83,7 @@ func main() {
 	var token string
 
 	app := tview.NewApplication()
+	app.EnablePaste(true)
 	pages := tview.NewPages()
 
 	agentView, refreshAgents, focusAgents, selectedAgentID := newAgentTable(app, pages, serverURL, &token)
@@ -140,10 +141,6 @@ func main() {
 
 		// If in an input field or form, only handle Ctrl+C and Escape
 		if isInput || isForm {
-			if event.Key() == tcell.KeyEscape {
-				app.Stop()
-				return nil
-			}
 			return event
 		}
 

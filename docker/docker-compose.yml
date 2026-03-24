@@ -24,7 +24,7 @@ services:
       DATABASE_URL: "postgres://${REDFORGE_DB_USER:-redforge}:${REDFORGE_DB_PASS:?set REDFORGE_DB_PASS}@postgres:5432/${REDFORGE_DB_NAME:-redforge}?sslmode=disable"
       REDFORGE_TLS_CERT_FILE: "/certs/server.crt"
       REDFORGE_TLS_KEY_FILE: "/certs/server.key"
-      REDFORGE_CORS_ORIGINS: "https://localhost:5174,https://localhost:5173,https://127.0.0.1:5174,https://127.0.0.1:5173"
+      REDFORGE_CORS_ORIGINS: "https://localhost:5174,https://localhost:5173,https://127.0.0.1:5174,https://127.0.0.1:5173,http://localhost:5174,http://localhost:5173,http://127.0.0.1:5174,http://127.0.0.1:5173"
     depends_on:
       - postgres
     ports:

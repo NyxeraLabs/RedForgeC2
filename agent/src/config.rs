@@ -16,7 +16,8 @@ pub struct AgentConfig {
 
 impl AgentConfig {
     pub fn load() -> Self {
-        let server_url = env::var("REDFORGE_SERVER_URL").unwrap_or_else(|_| "https://localhost:9080".to_string());
+        let server_url = env::var("REDFORGE_SERVER_URL")
+            .unwrap_or_else(|_| "https://localhost:9080".to_string());
         let ca_cert_path = env::var("REDFORGE_CA_CERT").ok();
         let heartbeat_interval = env::var("REDFORGE_HEARTBEAT_INTERVAL")
             .ok()

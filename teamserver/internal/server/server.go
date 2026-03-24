@@ -250,18 +250,47 @@ func (s *Server) handleTaskResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var result api.TaskResult
-	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
+	// The agent serializes `error` as JSON null on success. Decode it as a pointer
+	// so we accept both `"error": "..."` and `"error": null`.
+	var in struct {
+		AgentID   string     `json:"agent_id"`
+		Token     string     `json:"token"`
+		TaskID    string     `json:"task_id"`
+		Status    string     `json:"status"`
+		Output    string     `json:"output"`
+		Error     *string    `json:"error"`
+		Timestamp *time.Time `json:"timestamp"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if !s.registry.ValidateToken(result.AgentID, result.Token) {
+	if !s.registry.ValidateToken(in.AgentID, in.Token) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	s.registry.AddResult(result.AgentID, result)
+	ts := time.Now().UTC()
+	if in.Timestamp != nil {
+		ts = in.Timestamp.UTC()
+	}
+	out := api.TaskResult{
+		AgentID:   in.AgentID,
+		Token:     in.Token,
+		TaskID:    in.TaskID,
+		Status:    in.Status,
+		Output:    in.Output,
+		Error:     "",
+		Timestamp: ts,
+	}
+	if in.Error != nil {
+		out.Error = *in.Error
+	}
+
+	s.registry.AddResult(in.AgentID, out)
+	// Notify UIs that task status and results changed.
+	s.broadcastState()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})

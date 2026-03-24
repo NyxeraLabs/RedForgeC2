@@ -23,8 +23,19 @@ func hardeningFromEnv() hardeningConfig {
 	origins := make(map[string]struct{})
 	raw := strings.TrimSpace(os.Getenv("REDFORGE_CORS_ORIGINS"))
 	if raw == "" {
-		// Secure-by-default for local development: allow only common Vite ports.
-		raw = "https://localhost:5174,https://localhost:5173"
+		// Secure-by-default for local development: allow only common UI dev ports
+		// on loopback. Include both http/https because the UI may be run via
+		// `npm run dev` (http) or via the dockerized UI (https).
+		raw = strings.Join([]string{
+			"https://localhost:5174",
+			"https://localhost:5173",
+			"https://127.0.0.1:5174",
+			"https://127.0.0.1:5173",
+			"http://localhost:5174",
+			"http://localhost:5173",
+			"http://127.0.0.1:5174",
+			"http://127.0.0.1:5173",
+		}, ",")
 	}
 	for _, o := range strings.Split(raw, ",") {
 		o = strings.TrimSpace(o)
@@ -68,7 +79,11 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Cross-Origin-Resource-Policy", "same-site")
+		// This server is primarily an API consumed by a separate UI origin during
+		// development. Using "same-site" breaks scheme-mismatched dev setups
+		// (e.g. UI on http://localhost:* talking to https://localhost:*).
+		// CORS remains the controlling policy for browser access.
+		w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 		next.ServeHTTP(w, r)
 	})
 }

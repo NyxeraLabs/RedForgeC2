@@ -44,6 +44,13 @@ func AuthMiddleware(secret string, next http.Handler) http.Handler {
 func AuthMiddlewareWithAPIToken(secret string, store *users.Store, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
+		// Browsers cannot set custom headers during the WebSocket handshake.
+		// For /api/ws only, accept `?token=` as an alternative to the Authorization header.
+		if authHeader == "" && r.URL.Path == "/api/ws" {
+			if q := r.URL.Query().Get("token"); q != "" {
+				authHeader = "Bearer " + q
+			}
+		}
 		if authHeader == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
