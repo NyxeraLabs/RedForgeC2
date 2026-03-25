@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/NyxeraLabs/RedForgeC2/teamserver/internal/auth"
@@ -44,9 +45,9 @@ func AuthMiddleware(secret string, next http.Handler) http.Handler {
 func AuthMiddlewareWithAPIToken(secret string, store *users.Store, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		// Browsers cannot set custom headers during the WebSocket handshake.
-		// For /api/ws only, accept `?token=` as an alternative to the Authorization header.
-		if authHeader == "" && r.URL.Path == "/api/ws" {
+		// Browsers cannot set custom headers during the WebSocket handshake or file downloads.
+		// For /api/ws and /api/operator/files/*/download, accept `?token=` as an alternative to the Authorization header.
+		if authHeader == "" && (r.URL.Path == "/api/ws" || (strings.Contains(r.URL.Path, "/api/operator/files/") && strings.Contains(r.URL.Path, "/download"))) {
 			if q := r.URL.Query().Get("token"); q != "" {
 				authHeader = "Bearer " + q
 			}

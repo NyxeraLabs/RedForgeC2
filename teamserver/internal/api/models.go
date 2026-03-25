@@ -75,3 +75,42 @@ type HeartbeatResponse struct {
 	Status string        `json:"status"`
 	Tasks  []TaskMessage `json:"tasks"`
 }
+
+// FileChunk represents an encrypted chunk of a file for transfer between agent and operator.
+type FileChunk struct {
+	SessionID    string `json:"session_id"`
+	ChunkNumber  int    `json:"chunk_number"`
+	TotalChunks  int    `json:"total_chunks"`
+	Filename     string `json:"filename"`
+	OriginalSize int    `json:"original_size"`
+	Nonce        string `json:"nonce"` // base64-encoded
+	Data         string `json:"data"`  // base64-encoded ciphertext
+	HMAC         string `json:"hmac"`  // base64-encoded HMAC-SHA256
+}
+
+// FileUploadRequest is sent by an agent to upload an encrypted file chunk.
+type FileUploadRequest struct {
+	AgentID string    `json:"agent_id"`
+	Token   string    `json:"token"`
+	Chunk   FileChunk `json:"chunk"`
+}
+
+// FileUploadResponse confirms successful receipt of a chunk.
+type FileUploadResponse struct {
+	Status      string `json:"status"`
+	Message     string `json:"message,omitempty"`
+	ChunkNumber int    `json:"chunk_number"`
+}
+
+// FileDownloadRequest requests a specific chunk of a file from the operator.
+type FileDownloadRequest struct {
+	AgentID     string `json:"agent_id"`
+	Token       string `json:"token"`
+	FileID      string `json:"file_id"`
+	ChunkNumber int    `json:"chunk_number"`
+}
+
+// FileDownloadResponse sends an encrypted file chunk to the agent.
+type FileDownloadResponse struct {
+	Chunk FileChunk `json:"chunk"`
+}

@@ -55,12 +55,13 @@ func (h *wsHub) broadcast(message []byte) {
 
 // Server represents the teamserver HTTP API.
 type Server struct {
-	config   *config.Config
-	mux      *http.ServeMux
-	logger   *log.Logger
-	registry *registry.Registry
-	users    *users.Store
-	wsHub    *wsHub
+	config    *config.Config
+	mux       *http.ServeMux
+	logger    *log.Logger
+	registry  *registry.Registry
+	users     *users.Store
+	wsHub     *wsHub
+	fileStore *FileStore
 
 	hardening    hardeningConfig
 	loginLimiter *ipRateLimiter
@@ -75,6 +76,14 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 		logger.Printf("warning: failed to ensure admin user: %v", err)
 	}
 
+	// Initialize file store
+	fileStore, err := NewFileStore("./data/files")
+	if err != nil {
+		logger.Printf("warning: failed to initialize file store: %v", err)
+		// Create a dummy file store to prevent nil pointer dereference
+		fileStore, _ = NewFileStore("/tmp/redforge_files")
+	}
+
 	hard := hardeningFromEnv()
 	server := &Server{
 		config:       cfg,
@@ -83,6 +92,7 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 		registry:     registry.New(pool),
 		users:        userStore,
 		wsHub:        newWsHub(),
+		fileStore:    fileStore,
 		hardening:    hard,
 		loginLimiter: newIPRateLimiter(hard.loginRPM, time.Minute),
 	}
@@ -91,6 +101,8 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	mux.HandleFunc("/api/register", server.handleRegister)
 	mux.HandleFunc("/api/heartbeat", server.handleHeartbeat)
 	mux.HandleFunc("/api/task/result", server.handleTaskResult)
+	mux.HandleFunc("/api/files/upload", server.handleFileUpload)
+	mux.HandleFunc("/api/files/download", server.handleFileDownload)
 	mux.Handle("/api/login", withLoginRateLimit(server.loginLimiter, http.HandlerFunc(server.handleLogin)))
 	mux.Handle("/api/me", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleMe)))
 	mux.Handle("/api/me/profile", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, http.HandlerFunc(server.handleMeProfile)))
@@ -103,6 +115,9 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	mux.Handle("/api/operator/task", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleTaskCreate))))
 	mux.Handle("/api/operator/results", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTaskResults))))
 	mux.Handle("/api/operator/tasks", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTasksList))))
+	mux.Handle("/api/operator/files", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleFilesList))))
+	mux.Handle("/api/operator/files/upload", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleOperatorFileUpload))))
+	mux.Handle("/api/operator/files/", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleFileInfo))))
 
 	mux.Handle("/api/admin/users", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminUsers))))
 	mux.Handle("/api/admin/api-tokens", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireRole(string(users.RoleAdmin), http.HandlerFunc(server.handleAdminAPITokens))))

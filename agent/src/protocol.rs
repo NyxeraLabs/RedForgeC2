@@ -62,3 +62,56 @@ pub struct HeartbeatResponse {
     pub status: String,
     pub tasks: Vec<TaskMessage>,
 }
+
+/// Encrypted file chunk for transfer between agent and operator.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileChunk {
+    /// Unique identifier for this file transfer session
+    pub session_id: String,
+    /// Sequential chunk number (0-indexed)
+    pub chunk_number: usize,
+    /// Total number of chunks in this file
+    pub total_chunks: usize,
+    /// Original filename (for reference)
+    pub filename: String,
+    /// Size of original (unencrypted) data in this chunk
+    pub original_size: usize,
+    /// Nonce used for this chunk's encryption (base64-encoded)
+    pub nonce: String,
+    /// Encrypted chunk data (base64-encoded)
+    pub data: String,
+    /// HMAC-SHA256 for authentication (base64-encoded)
+    pub hmac: String,
+}
+
+/// Upload request from agent to operator (sends encrypted file chunks).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileUploadRequest {
+    pub agent_id: String,
+    pub token: String,
+    pub chunk: FileChunk,
+}
+
+/// Upload response from operator confirming chunk receipt.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileUploadResponse {
+    pub status: String,
+    pub message: Option<String>,
+    pub chunk_number: usize,
+}
+
+/// Download request from agent to operator (requests encrypted file chunks).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileDownloadRequest {
+    pub agent_id: String,
+    pub token: String,
+    pub file_id: String,
+    pub chunk_number: usize,
+}
+
+/// Download response from operator (sends encrypted file chunks).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileDownloadResponse {
+    pub chunk: FileChunk,
+}
+

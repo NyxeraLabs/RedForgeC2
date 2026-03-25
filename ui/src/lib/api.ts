@@ -179,3 +179,41 @@ export async function adminCreateUser(body: { username: string; password: string
     throw new Error(data?.error || `${res.status} ${res.statusText}`);
   }
 }
+// File Transfer API types and functions
+
+export type StoredFile = {
+  file_id: string;
+  session_id: string;
+  filename: string;
+  total_chunks: number;
+  chunks_received: number;
+  uploaded_at: string;
+  agent_id: string;
+};
+
+export async function listFiles(agentId?: string): Promise<StoredFile[]> {
+  const qs = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  const res = await request(`/api/operator/files${qs}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const data = (await res.json()) as { files: StoredFile[] } | null;
+  return data?.files || [];
+}
+
+export async function getFileInfo(fileId: string): Promise<StoredFile> {
+  const res = await request(`/api/operator/files/${encodeURIComponent(fileId)}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return (await res.json()) as StoredFile;
+}
+
+export async function downloadFile(fileId: string, fileName: string): Promise<void> {
+  const token = getToken();
+  const base = apiBase();
+  
+  // Create a temporary element to trigger download
+  const link = document.createElement("a");
+  link.href = `${base}/api/operator/files/${encodeURIComponent(fileId)}/download?token=${encodeURIComponent(token || "")}`;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

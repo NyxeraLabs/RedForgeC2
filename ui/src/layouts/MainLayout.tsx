@@ -32,6 +32,8 @@ export function MainLayout() {
     ? "Profile"
     : loc.pathname.startsWith("/admin")
     ? "Administration"
+    : loc.pathname.startsWith("/files")
+    ? "File Transfer"
     : "Dashboard";
 
   function logout() {
@@ -64,6 +66,9 @@ export function MainLayout() {
             </NavLink>
             <NavLink to="/reports" className={navClass}>
               Reports
+            </NavLink>
+            <NavLink to="/files" className={navClass}>
+              File Transfer
             </NavLink>
             <NavLink to="/settings" className={navClass}>
               Settings

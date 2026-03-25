@@ -10,6 +10,7 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { FileTransferPage } from "./pages/FileTransferPage";
 import { MainLayout } from "./layouts/MainLayout";
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="map" element={<MapPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="files" element={<FileTransferPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="admin/users" element={<AdminUsersPage />} />
             </Route>

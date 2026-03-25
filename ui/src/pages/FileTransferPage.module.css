@@ -1,0 +1,241 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+}
+
+.section {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 0, 51, 0.18);
+  background: rgba(12, 12, 14, 0.68);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(255, 0, 51, 0.15);
+  padding-bottom: 12px;
+}
+
+.section h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.description {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+select,
+input[type="file"],
+button {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 0, 51, 0.3);
+  background: rgba(255, 0, 51, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+select:hover:not(:disabled),
+input[type="file"]:hover:not(:disabled),
+button:hover:not(:disabled) {
+  border-color: rgba(255, 0, 51, 0.5);
+  background: rgba(255, 0, 51, 0.15);
+}
+
+select:disabled,
+input[type="file"]:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+select:focus,
+input[type="file"]:focus,
+button:focus {
+  outline: none;
+  border-color: rgba(255, 0, 51, 0.7);
+  box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1);
+}
+
+.uploadArea {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.progressContainer progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progressContainer progress::-webkit-progress-bar {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.progressContainer progress::-webkit-progress-value {
+  background: rgba(34, 197, 94, 0.8);
+  border-radius: 3px;
+}
+
+.progressContainer progress::-moz-progress-bar {
+  background: rgba(34, 197, 94, 0.8);
+  border-radius: 3px;
+}
+
+.progressContainer span {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  min-width: 45px;
+  text-align: right;
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+}
+
+table th,
+table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+table th {
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  background: rgba(255, 0, 51, 0.05);
+}
+
+table td {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.filename {
+  color: rgba(255, 0, 51, 0.85);
+  font-weight: 600;
+}
+
+.date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.progressBar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress {
+  height: 100%;
+  background: rgba(34, 197, 94, 0.8);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.complete {
+  color: rgba(34, 197, 94, 0.95);
+  font-weight: 600;
+}
+
+.incomplete {
+  color: rgba(245, 158, 11, 0.95);
+  font-weight: 600;
+}
+
+.noData {
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  padding: 24px;
+  font-style: italic;
+}
+
+.infoBox {
+  background: rgba(255, 0, 51, 0.05);
+  border-left: 3px solid rgba(255, 0, 51, 0.4);
+  padding: 16px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.infoBox ul {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.infoBox li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.infoBox strong {
+  color: rgba(255, 0, 51, 0.9);
+}
+
+.status {
+  color: rgba(245, 158, 11, 0.95);
+  margin: 12px 0 0 0;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.statusBar {
+  border-radius: 6px;
+  border: 1px solid rgba(255, 0, 51, 0.2);
+  background: rgba(255, 0, 51, 0.05);
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  position: sticky;
+  bottom: 0;
+  margin: 24px -20px -20px -20px;
+  border-radius: 0 0 12px 12px;
+}

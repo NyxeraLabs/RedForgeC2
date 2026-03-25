@@ -16,6 +16,8 @@
 
 **RedForgeC2** is an industrial-strength, highly evasive Command & Control (C2) and Adversary Emulation framework developed by **NyxeraLabs**. Engineered strictly for authorized Red Team engagements, Purple Team exercises, and advanced threat validation.
 
+Documentation: `docs/INDEX.md`
+
 </div>
 
 > ⚠️ **LEGAL & ETHICAL DISCLAIMER**  

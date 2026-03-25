@@ -103,7 +103,7 @@ curl https://localhost:9080/api/operator/results?agent_id=<agent-id> \
 
 ## Related Issues
 
-- CORS configuration must be set for UI-to-teamserver communication (see [CORS_SETUP.md](CORS_SETUP.md))
+- CORS configuration must be set for UI-to-teamserver communication (see [cors-setup.md](cors-setup.md))
 - Protocol mismatch between UI and teamserver (see [api.ts fix](ui/src/lib/api.ts))
 
 ---

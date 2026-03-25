@@ -1,5 +1,7 @@
 mod bootstrap;
 mod config;
+mod fileops;
+mod filetransfer;
 mod protocol;
 mod state;
 mod transport;
