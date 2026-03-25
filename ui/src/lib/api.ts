@@ -104,6 +104,11 @@ export async function listAgents(): Promise<Agent[]> {
   return Array.isArray(raw) ? (raw as Agent[]) : [];
 }
 
+export async function deleteAgent(agentId: string) {
+  const res = await request(`/api/operator/agents/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+}
+
 export type TaskSummary = {
   task_id: string;
   agent_id: string;

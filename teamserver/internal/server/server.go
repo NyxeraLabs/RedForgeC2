@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,6 +99,7 @@ func New(cfg *config.Config, logger *log.Logger, pool *pgxpool.Pool) *Server {
 	operatorReadRoles := []string{string(users.RoleAdmin), string(users.RoleOperator), string(users.RoleObserver)}
 	operatorWriteRoles := []string{string(users.RoleAdmin), string(users.RoleOperator)}
 	mux.Handle("/api/operator/agents", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleAgentList))))
+	mux.Handle("/api/operator/agents/", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleAgentDelete))))
 	mux.Handle("/api/operator/task", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorWriteRoles, http.HandlerFunc(server.handleTaskCreate))))
 	mux.Handle("/api/operator/results", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTaskResults))))
 	mux.Handle("/api/operator/tasks", AuthMiddlewareWithAPIToken(cfg.JWTSecret, server.users, RequireAnyRole(operatorReadRoles, http.HandlerFunc(server.handleTasksList))))
@@ -202,6 +205,9 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	s.registry.UpdateHeartbeat(hb.AgentID, hb.Transport)
 
 	tasks := s.registry.GetTasks(hb.AgentID)
+	if tasks == nil {
+		tasks = []api.TaskMessage{}
+	}
 	resp := api.HeartbeatResponse{
 		Status: "ok",
 		Tasks:  tasks,
@@ -347,6 +353,31 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAgentList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(s.registry.ListAgents())
+}
+
+func (s *Server) handleAgentDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	agentID := strings.TrimPrefix(r.URL.Path, "/api/operator/agents/")
+	if agentID == "" || strings.Contains(agentID, "/") {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if err := s.registry.DeleteAgent(agentID); err != nil {
+		if errors.Is(err, registry.ErrAgentNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Notify connected UIs that agent state has changed.
+	s.broadcastState()
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {

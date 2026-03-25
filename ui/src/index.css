@@ -163,10 +163,17 @@ html, body {
   gap: 16px;
   padding: 18px 24px;
   flex: 1;
+  min-width: 0;
 }
 
 .main-single {
   grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
 }
 
 .panel {
@@ -177,6 +184,11 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.panel-span {
+  grid-column: 1 / -1;
 }
 
 .panel-header {
@@ -207,10 +219,19 @@ html, body {
   padding: 16px;
   flex: 1;
   overflow: auto;
+  min-width: 0;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 0.9rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -243,16 +264,55 @@ html, body {
 .agent-line {
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .agent-host {
   font-weight: 800;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-id {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.85rem;
+  flex: 0 0 auto;
+}
+
+.agent-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.btn-mini {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.btn-mini:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.btn-danger {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.22);
 }
 
 .hb {

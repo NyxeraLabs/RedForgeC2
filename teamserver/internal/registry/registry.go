@@ -40,6 +40,8 @@ type Registry struct {
 	db      *pgxpool.Pool
 }
 
+var ErrAgentNotFound = errors.New("agent not found")
+
 // New creates an agent registry.
 // If db is nil, a memory-backed registry is used.
 func New(db *pgxpool.Pool) *Registry {
@@ -211,11 +213,11 @@ func (r *Registry) GetTasks(agentID string) []api.TaskMessage {
 		ctx := context.Background()
 		rows, err := r.db.Query(ctx, "SELECT task_id, command, args, timeout_seconds FROM tasks WHERE agent_id=$1 AND status='pending'", agentID)
 		if err != nil {
-			return nil
+			return []api.TaskMessage{}
 		}
 		defer rows.Close()
 
-		var out []api.TaskMessage
+		out := make([]api.TaskMessage, 0)
 		for rows.Next() {
 			var t api.TaskMessage
 			var argsBytes []byte
@@ -369,4 +371,35 @@ func (r *Registry) ListAgents() []*Agent {
 		out = append(out, a)
 	}
 	return out
+}
+
+// DeleteAgent removes an agent and any related tasks/results.
+// In the Postgres-backed registry this relies on FK ON DELETE CASCADE.
+func (r *Registry) DeleteAgent(agentID string) error {
+	if agentID == "" {
+		return ErrAgentNotFound
+	}
+
+	if r.db != nil {
+		ctx := context.Background()
+		cmd, err := r.db.Exec(ctx, "DELETE FROM agents WHERE agent_id=$1", agentID)
+		if err != nil {
+			return err
+		}
+		if cmd.RowsAffected() == 0 {
+			return ErrAgentNotFound
+		}
+		return nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.agents[agentID]; !ok {
+		return ErrAgentNotFound
+	}
+	delete(r.agents, agentID)
+	delete(r.tasks, agentID)
+	delete(r.results, agentID)
+	return nil
 }

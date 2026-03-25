@@ -239,7 +239,28 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
             }
         }
         "ls" => {
-            let path = task.args.get(0).map(|p| p.as_str()).unwrap_or(".");
+            // Support common flag usage like `ls -la` without treating flags as a path.
+            // We don't try to perfectly emulate GNU/BSD ls output; we just avoid ENOENT
+            // when flags are provided.
+            let mut show_hidden = false;
+            let mut path: Option<&str> = None;
+            let mut parsing_flags = true;
+            for arg in &task.args {
+                let s = arg.as_str();
+                if parsing_flags && s == "--" {
+                    parsing_flags = false;
+                    continue;
+                }
+                if parsing_flags && s.starts_with('-') && s.len() > 1 {
+                    if s == "--all" || s == "-a" || s.contains('a') {
+                        show_hidden = true;
+                    }
+                    continue;
+                }
+                path = Some(s);
+                break;
+            }
+            let path = path.unwrap_or(".");
             match fs::read_dir(path) {
                 Ok(entries) => {
                     let mut lines = Vec::new();
@@ -249,7 +270,7 @@ async fn execute_task(state: &AgentState, task: TaskMessage) -> TaskResult {
                             Err(_) => continue,
                         };
                         // Skip hidden files and some common noise directories.
-                        if name.starts_with('.') {
+                        if !show_hidden && name.starts_with('.') {
                             continue;
                         }
                         if name.starts_with("go-build") || name.starts_with("systemd-private-") {

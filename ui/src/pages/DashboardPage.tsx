@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Agent, apiBase, createTask, getMe, listAgents, listResults, listTasks, TaskResult, TaskSummary, wsBase } from "../lib/api";
+import { Agent, apiBase, createTask, deleteAgent, getMe, listAgents, listResults, listTasks, TaskResult, TaskSummary, wsBase } from "../lib/api";
 import { useToasts } from "../components/ToastProvider";
-import { getToken } from "../lib/storage";
+import { getSelectedAgent, getToken, setSelectedAgent as persistSelectedAgent } from "../lib/storage";
 
 function ageSeconds(iso: string): number {
   const t = new Date(iso).getTime();
@@ -19,7 +19,7 @@ export function DashboardPage() {
   const toasts = useToasts();
   const [role, setRole] = useState<"admin" | "operator" | "observer" | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>("");
+  const [selectedAgent, setSelectedAgent] = useState<string>(() => getSelectedAgent() || "");
   const [command, setCommand] = useState("ls");
   const [args, setArgs] = useState("");
   const [timeoutSec, setTimeoutSec] = useState(30);
@@ -29,14 +29,54 @@ export function DashboardPage() {
   const [status, setStatus] = useState<string>("idle");
 
   const knownAgents = useRef<Set<string>>(new Set());
+  const selectedAgentRef = useRef<string>(selectedAgent);
   const api = useMemo(() => apiBase(), []);
+
+  useEffect(() => {
+    selectedAgentRef.current = selectedAgent;
+    persistSelectedAgent(selectedAgent || null);
+  }, [selectedAgent]);
+
+  useEffect(() => {
+    const current = selectedAgentRef.current;
+    if (agents.length === 0) {
+      if (current) setSelectedAgent("");
+      return;
+    }
+    if (!current || !agents.some((a) => a.agent_id === current)) {
+      setSelectedAgent(agents[0].agent_id);
+    }
+  }, [agents]);
+
+  async function removeAgent(agentId: string) {
+    if (role === "observer") return;
+    const ok = window.confirm(`Delete agent ${agentId.slice(0, 8)}? This will also delete tasks/results for the agent.`);
+    if (!ok) return;
+    setStatus("deleting agent...");
+    try {
+      await deleteAgent(agentId);
+      toasts.push({ kind: "good", title: "Agent deleted", message: agentId.slice(0, 8) });
+      await refreshAgents(false);
+      await refreshTasks();
+      await refreshResults();
+      setStatus("agent deleted");
+    } catch (e) {
+      setStatus(`delete failed: ${e}`);
+      toasts.push({ kind: "bad", title: "Delete failed", message: String(e) });
+    }
+  }
 
   async function refreshAgents(showToast = false) {
     setStatus("loading agents...");
     try {
       const list = await listAgents();
       setAgents(list);
-      if (!selectedAgent && list.length > 0) setSelectedAgent(list[0].agent_id);
+      const current = selectedAgentRef.current;
+      if (list.length === 0) {
+        if (current) setSelectedAgent("");
+      } else if (!current || !list.some((a) => a.agent_id === current)) {
+        setSelectedAgent(list[0].agent_id);
+      }
       setStatus(`loaded ${list.length} agents`);
 
       const newOnes = list.filter((a) => !knownAgents.current.has(a.agent_id));
@@ -54,7 +94,7 @@ export function DashboardPage() {
 
   async function refreshTasks() {
     try {
-      const list = await listTasks(selectedAgent || undefined);
+      const list = await listTasks(selectedAgentRef.current || undefined);
       setTasks(list);
     } catch (e) {
       toasts.push({ kind: "warn", title: "Tasks refresh failed", message: String(e) });
@@ -62,9 +102,10 @@ export function DashboardPage() {
   }
 
   async function refreshResults() {
-    if (!selectedAgent) return;
+    const agentId = selectedAgentRef.current;
+    if (!agentId) return;
     try {
-      const list = await listResults(selectedAgent);
+      const list = await listResults(agentId);
       setResults(list);
     } catch (e) {
       toasts.push({ kind: "warn", title: "Results refresh failed", message: String(e) });
@@ -92,7 +133,10 @@ export function DashboardPage() {
         const msg = JSON.parse(event.data) as { type: string; agents?: Agent[]; tasks?: TaskSummary[] };
         if (msg.type === "state") {
           if (msg.agents) setAgents(msg.agents);
-          if (msg.tasks) setTasks(msg.tasks);
+          if (msg.tasks) {
+            const current = selectedAgentRef.current;
+            setTasks(current ? msg.tasks.filter((t) => t.agent_id === current) : msg.tasks);
+          }
         }
       } catch {
         // ignore bad payloads
@@ -119,10 +163,25 @@ export function DashboardPage() {
     }
     setStatus("submitting task...");
     try {
-      const argv = args.trim() === "" ? [] : args.split(" ");
-      await createTask(selectedAgent, command, argv, timeoutSec, transport);
+      const rawCommand = command.trim();
+      if (!rawCommand) {
+        toasts.push({ kind: "warn", title: "Command is required" });
+        setStatus("idle");
+        return;
+      }
+
+      // Accept "ls -la" typed into the Command box by splitting on whitespace and
+      // combining with the Args field. This prevents trying to exec "ls -la" as
+      // a single binary (which fails with ENOENT).
+      const cmdParts = rawCommand.split(/\s+/).filter(Boolean);
+      const cmd = cmdParts[0];
+      const inlineArgs = cmdParts.slice(1);
+      const extraArgs = args.trim() === "" ? [] : args.trim().split(/\s+/).filter(Boolean);
+      const argv = [...inlineArgs, ...extraArgs];
+
+      await createTask(selectedAgent, cmd, argv, timeoutSec, transport);
       setStatus("task submitted");
-      toasts.push({ kind: "good", title: "Task queued", message: `${command} ${args}`.trim() });
+      toasts.push({ kind: "good", title: "Task queued", message: `${cmd} ${argv.join(" ")}`.trim() });
       await refreshTasks();
       await refreshResults();
     } catch (e) {
@@ -151,45 +210,64 @@ export function DashboardPage() {
             <button onClick={() => refreshAgents(true)}>Refresh</button>
           </div>
           <div className="panel-body">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>OS</th>
-                  <th>Arch</th>
-                  <th>HB</th>
-                  <th>Fails</th>
-                  <th>Last Err</th>
-                  <th>Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agents.map((a) => (
-                  <tr
-                    key={a.agent_id}
-                    className={a.agent_id === selectedAgent ? "selected" : ""}
-                    onClick={() => setSelectedAgent(a.agent_id)}
-                  >
-                    <td>
-                      <div className="agent-line">
-                        <span className="agent-host">{a.hostname}</span>
-                        <span className="agent-id">{a.agent_id.slice(0, 8)}</span>
-                      </div>
-                    </td>
-                    <td>{a.os}</td>
-                    <td>{a.arch}</td>
-                    <td>
-                      <span className={heartbeatClass(a.last_seen)}>{ageSeconds(a.last_seen)}s</span>
-                    </td>
-                    <td>{a.heartbeat_failures ?? 0}</td>
-                    <td title={a.heartbeat_last_error || ""}>
-                      {a.heartbeat_last_error ? a.heartbeat_last_error.slice(0, 24) : "-"}
-                    </td>
-                    <td>{new Date(a.last_seen).toLocaleString()}</td>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>OS</th>
+                    <th>Arch</th>
+                    <th>HB</th>
+                    <th>Fails</th>
+                    <th>Last Err</th>
+                    <th>Last Seen</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {agents.map((a) => (
+                    <tr
+                      key={a.agent_id}
+                      className={a.agent_id === selectedAgent ? "selected" : ""}
+                      onClick={() => setSelectedAgent(a.agent_id)}
+                    >
+                      <td>
+                        <div className="agent-line">
+                          <span className="agent-host" title={a.hostname}>
+                            {a.hostname}
+                          </span>
+                          <span className="agent-id">{a.agent_id.slice(0, 8)}</span>
+                          {role === "observer" ? null : (
+                            <span className="agent-actions">
+                              <button
+                                className="btn-mini btn-danger"
+                                title="Delete agent"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  void removeAgent(a.agent_id);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>{a.os}</td>
+                      <td>{a.arch}</td>
+                      <td>
+                        <span className={heartbeatClass(a.last_seen)}>{ageSeconds(a.last_seen)}s</span>
+                      </td>
+                      <td>{a.heartbeat_failures ?? 0}</td>
+                      <td title={a.heartbeat_last_error || ""}>
+                        {a.heartbeat_last_error ? a.heartbeat_last_error.slice(0, 24) : "-"}
+                      </td>
+                      <td>{new Date(a.last_seen).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -262,7 +340,7 @@ export function DashboardPage() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel panel-span">
           <div className="panel-header">
             <h2>Results</h2>
             <button onClick={refreshResults} disabled={!selectedAgent}>
