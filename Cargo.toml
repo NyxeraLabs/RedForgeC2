@@ -3,3 +3,10 @@ resolver = "2"
 members = [
   "agent"
 ]
+
+[profile.release]
+opt-level = "z"      # Optimiza para tamaño mínimo
+lto = true           # Link Time Optimization (crucial)
+codegen-units = 1    # Maximiza optimizaciones
+panic = "abort"      # Elimina el código de recuperación de errores (ahorra mucho)
+strip = true         # Borra todos los símbolos (vital para Red Team)
